@@ -1,0 +1,14 @@
+.devin/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+.env.*
+!.env.example
+artifacts/*
+!artifacts/.gitkeep
+*.xlsx
+*.pdf
+*.log
+.coverage
