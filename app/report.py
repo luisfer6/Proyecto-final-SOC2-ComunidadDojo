@@ -107,7 +107,7 @@ def make_pdf(result):
     # 1. Compact identification instead of a separate cover.
     add('SOC LENS / BOOTCAMP ANALISTA SOC NIVEL 2', 'Small')
     add('Informe técnico de seguridad', 'Title')
-    add('Resumen técnico - borrador para revisión del analista', 'Small')
+    add('Resumen técnico', 'Small')
     table([
         ['Datos del caso', 'Identificación'],
         ['Cliente / Analista', f"{context.get('client') or 'Cliente corporativo (CORP)'} / {context.get('analyst') or 'Analista SOC L2'}"],
