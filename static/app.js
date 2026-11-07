@@ -1,6 +1,6 @@
 "use strict";
 const $ = (selector) => document.querySelector(selector);
-const state = {data:null, view:"overview", severity:"Todos", findingQuery:"", eventQuery:"", hour:null, page:0, busy:false, ollama:false};
+const state = {data:null, view:"overview", severity:"Todos", findingQuery:"", eventQuery:"", hour:null, page:0, busy:false, ollama:false, ollamaMessage:""};
 const titles = {
   overview:["Resumen de la investigación","Una vista de la evidencia y las señales que merecen tu atención."],
   findings:["Hallazgos con fundamento.","Revisa qué ocurrió, por qué importa y qué falta por validar."],
@@ -35,8 +35,19 @@ function showView(view) {
   if(view==="events") renderEvents();
   if(view==="findings") renderFindings();
 }
+function setConnection(connected) {
+  $("#connection").dataset.status=connected?"online":"offline";
+  $("#connection-label").textContent=connected?"Motor local activo":"Motor no disponible";
+}
 async function api(url, options={}) {
-  const response = await fetch(url,options);
+  let response;
+  try {
+    response = await fetch(url,options);
+  } catch {
+    setConnection(false);
+    throw new Error("No se pudo conectar con el servidor local. Ejecuta iniciar.cmd en la carpeta del proyecto, deja esa ventana abierta y vuelve a seleccionar el Excel.");
+  }
+  setConnection(true);
   if(!response.ok) {
     const error = await response.json().catch(()=>({}));
     throw new Error(typeof error.detail === "string" ? error.detail : `No se pudo completar la operación (${response.status}).`);
@@ -150,8 +161,8 @@ function renderReport() {
   $("#executive-summary").innerHTML=d.narrative.facts.map(f=>`<p>${esc(f)}</p>`).join("");
   $("#report-limitations").innerHTML=d.limitations.map(l=>`<p>${esc(l)}</p>`).join("");
   $("#file-hash").textContent=d.metadata.sha256;
-  $("#assist-button").disabled=!state.ollama;
-  $("#ollama-status").textContent=state.ollama?"Modelo local configurado. La selección se realiza sólo al solicitarla.":"Ollama no está configurado. El modelo estadístico local y el informe automático ya están disponibles.";
+  $("#assist-button").disabled=!state.ollama || !d.findings.length;
+  $("#ollama-status").textContent=state.ollama ? (d.findings.length ? state.ollamaMessage + " La selección se realiza sólo al solicitarla." : "No hay hallazgos para priorizar.") : state.ollamaMessage;
 }
 function dialog(title,html) {
   $("#dialog-title").textContent=title;$("#dialog-content").innerHTML=html;
@@ -219,7 +230,7 @@ $("#assist-button").addEventListener("click",async()=>{
   finally{button.disabled=!state.ollama;button.textContent="Priorizar con Ollama";}
 });
 api("/api/health").then(r=>r.json()).then(health=>{
-  state.ollama=health.ollama_configured;
-  $("#connection").lastChild.textContent=" Motor local activo";
+  state.ollama=health.ollama_available;
+  state.ollamaMessage=health.ollama_message;
   if(state.data)renderReport();
-}).catch(()=>{$("#connection").textContent="Motor no disponible";notice("No se pudo contactar al motor local. Comprueba que el servidor esté iniciado.",true);});
+}).catch(error=>{notice(error.message,true);});

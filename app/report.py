@@ -1,11 +1,11 @@
-"""PDF reproducible desde el mismo resultado que alimenta el dashboard."""
+"""PDF reproducible desde el mismo resultado que alimenta el dashboard, con formato SOC L2."""
 from io import BytesIO
 from pathlib import Path
 import re
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
@@ -16,7 +16,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 
 def register_font():
     candidates = [Path("C:/Windows/Fonts/arial.ttf"), Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-                  Path("/System/Library/Fonts/Supplemental/Arial.ttf")]
+                  Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
+                  Path(__import__("reportlab").__file__).parent / "fonts" / "Vera.ttf"]
     for path in candidates:
         if path.exists():
             if "Evidence" not in pdfmetrics.getRegisteredFontNames():
@@ -27,135 +28,283 @@ def register_font():
 
 FONT = register_font()
 
+# Paleta corporativa SOC
+COLOR_HEADER_BG = colors.HexColor("#1F3864")
+COLOR_HEADER_TEXT = colors.white
+COLOR_ROW_ALT = colors.HexColor("#F2F2F2")
+COLOR_BORDER = colors.HexColor("#BFBFBF")
+
+COLOR_CRITICO = colors.HexColor("#C00000")
+COLOR_ALTO = colors.HexColor("#ED7D31")
+COLOR_MEDIO = colors.HexColor("#FFC000")
+COLOR_BAJO = colors.HexColor("#70AD47")
+
+
+def get_severity_color(severity):
+    s = str(severity).lower()
+    if "crítico" in s or "critical" in s: return COLOR_CRITICO
+    if "alto" in s or "high" in s: return COLOR_ALTO
+    if "medio" in s or "medium" in s: return COLOR_MEDIO
+    if "bajo" in s or "low" in s: return COLOR_BAJO
+    return colors.HexColor("#54647e")
+
 
 def make_pdf(result):
     output = BytesIO()
     styles = getSampleStyleSheet()
+
     for name in ("Normal", "Title", "Heading1", "Heading2", "Heading3"):
         styles[name].fontName = FONT
-        styles[name].textColor = colors.HexColor("#17243b")
+        if name.startswith("Heading"):
+            styles[name].textColor = COLOR_HEADER_BG
+            styles[name].keepWithNext = True
+
     styles["Normal"].fontSize = 9
-    styles["Normal"].leading = 14
-    styles["Normal"].spaceAfter = 7
-    styles.add(ParagraphStyle("EvidenceText", fontName=FONT, fontSize=7, leading=10, wordWrap="CJK", spaceAfter=5))
-    styles.add(ParagraphStyle("Muted", fontName=FONT, fontSize=8, leading=12, textColor=colors.HexColor("#54647e")))
+    styles["Normal"].leading = 12
+    styles["Normal"].spaceAfter = 6
+
+    styles.add(ParagraphStyle("CoverTitle", fontName=FONT, fontSize=16, leading=20, textColor=COLOR_HEADER_BG, spaceAfter=15, keepWithNext=True))
+    styles.add(ParagraphStyle("CoverSubtitle", fontName=FONT, fontSize=12, leading=15, textColor=colors.gray, spaceAfter=20, keepWithNext=True))
+    styles.add(ParagraphStyle("TableText", fontName=FONT, fontSize=8, leading=10, wordWrap="CJK"))
+    styles.add(ParagraphStyle("TableTextBold", fontName=FONT, fontSize=8, leading=10, wordWrap="CJK", textColor=colors.black))
+
     story = []
 
     def p(value, style="Normal"):
-        # ReportLab's XML parser must never interpret text originating in logs.
+        if value is None: value = ""
         value = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "\ufffd", str(value))
-        return Paragraph(escape(value).replace("\n", "<br/>"), styles[style])
+        return Paragraph(escape(value).replace("\n", "<br/>").replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>"), styles[style])
 
     def add(value, style="Normal"):
         story.append(p(value, style))
 
-    def table(rows, widths):
-        cells = [[p(cell, "EvidenceText") for cell in row] for row in rows]
+    def make_table(rows, widths, is_header_dark=True):
+        cells = []
+        for i, row in enumerate(rows):
+            cell_row = []
+            for cell in row:
+                if isinstance(cell, Paragraph):
+                    cell_row.append(cell)
+                else:
+                    style = "TableTextBold" if (i == 0 and is_header_dark) else "TableText"
+                    # Forzar negrita si la celda incluye HTML bold manual en la primera columna o filas clave
+                    if "<b>" in str(cell): style = "TableTextBold"
+                    cell_row.append(p(cell, style))
+            cells.append(cell_row)
+
         t = Table(cells, colWidths=widths, repeatRows=1, hAlign="LEFT")
-        t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eaf0fb")),
+
+        ts = [
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LINEBELOW", (0, 0), (-1, 0), .5, colors.HexColor("#aab9d0")),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ]))
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
+            ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ]
+
+        if is_header_dark:
+            ts.extend([
+                ("BACKGROUND", (0, 0), (-1, 0), COLOR_HEADER_BG),
+                ("TEXTCOLOR", (0, 0), (-1, 0), COLOR_HEADER_TEXT),
+            ])
+            # Forzar color de texto blanco en la cabecera para los Párrafos
+            for col in range(len(widths)):
+                cells[0][col].style.textColor = colors.white
+
+        # Alternar colores de fila
+        for i in range(1, len(rows)):
+            if i % 2 == 0:
+                ts.append(("BACKGROUND", (0, i), (-1, i), COLOR_ROW_ALT))
+
+        t.setStyle(TableStyle(ts))
         story.append(t)
         story.append(Spacer(1, 8))
 
-    m, s = result["metadata"], result["summary"]
-    add("SOC LENS  /  INVESTIGACIÓN L2", "Muted")
-    add("Informe de seguridad", "Title")
-    add("Análisis de evidencia · Borrador para revisión humana", "Heading2")
-    add(f"Archivo: {m['filename']}")
-    add(f"Generado (UTC): {result['generated_at']} · Motor: {result['version']}")
-    add(f"SHA-256 del XLSX: {m['sha256']}", "EvidenceText")
-    add("1. Resumen ejecutivo", "Heading1")
-    for fact in result["narrative"]["facts"]:
-        add(fact)
-    add(result["narrative"]["review"])
-    add(f"Método de redacción: {result['narrative']['mode']}.")
-    add("La criticidad prioriza la revisión por impacto potencial. No constituye una confirmación de daño, una atribución de actor ni una declaración de compromiso.")
-    add("2. Alcance, integridad y metodología", "Heading1")
-    add(f"{m['rows']} filas recibidas; {m['unique_rows']} únicas; {m['duplicates']} duplicados exactos; {m['invalid_dates']} fechas no interpretables. Se mantienen las filas originales y referencias hoja/fila.")
-    add(f"Desfase horario declarado por el usuario (minutos respecto de UTC): {m['timezone_offset_minutes'] if m['timezone_offset_minutes'] is not None else 'no proporcionado'}. Fechas sin zona no se convierten a UTC.")
-    for sheet in m["sheets"]:
-        add(f"Hoja {sheet['name']}: {sheet['rows']} filas; {'omitida por esquema' if sheet['skipped'] else 'procesada'}. Mapeo: {sheet['mapping']}", "EvidenceText")
-    for warning in m["warnings"]:
-        add(warning)
-    add("Las reglas evalúan proveedor, Event_ID y campos concretos. Fuerza bruta: al menos 5 fallos/10 min; éxito posterior: al menos 3 fallos de la misma cuenta/host/IP en 15 min; acceso a objetos: 10 eventos/5 min; transferencia: 50 MB/10 min. Ventanas solapadas pueden formar un episodio más largo. Los umbrales son heurísticos y no un baseline.")
-    add("Las asociaciones entre hallazgos requieren host, cuenta e IP comunes y no más de 30 minutos entre dos evidencias. Se presentan pares; no se fusionan transitivamente como incidentes.")
-    add(f"IA: {result['ai']['name']} · {result['ai']['library']} · estado: {result['ai']['status']} · semilla: 42.")
-    add(result["ai"]["note"])
-    add("Variables del modelo: " + "; ".join(result["ai"]["features"]) + ".")
-    add("3. Hallazgos y plan específico", "Heading1")
-    if not result["findings"]:
-        add("Ninguna regla produjo hallazgos. Esto no demuestra ausencia de actividad maliciosa.")
-    for f in result["findings"]:
-        add(f"{f['id']} · {f['title']}", "Heading2")
-        add(f"Criticidad: {f['severity']} · Confianza: {f['confidence']} · Regla: {f['rule']} · {f['status']}")
-        add(f"Activos observados: {', '.join(f['hosts']) or 'no disponibles'}; cuentas: {', '.join(f['users']) or 'no disponibles'}.")
-        add(f"Intervalo de evidencia (hora original): {f['start']} — {f['end']}.")
-        for label, field in [("Observación", "observation"), ("Justificación", "rationale"),
-                             ("Alternativa legítima", "alternative"), ("Impacto condicionado", "impact"),
-                             ("Validación propuesta", "validation"), ("Acción propuesta", "action")]:
-            add(f"{label}: {f[field]}")
-        add("Evidencias exactas en anexo: " + ", ".join(f["evidence"]), "EvidenceText")
-    add("4. Cronología y asociaciones", "Heading1")
-    table([["Hora / dominio temporal", "Eventos únicos", "Con señal de regla"]] +
-          [[f"{t['hour']} · {t['clock']}", t["events"], t["flagged"]] for t in result["timeline"]], [105*mm, 30*mm, 35*mm])
-    for c in result["incidents"]:
-        add(f"{c['id']} · {c['title']} · {c['status']}", "Heading3")
-        add(f"Hallazgos: {', '.join(c['findings'])}. Claves: host={c['host']}; cuenta={c['user']}; IP={c['source_ip']}; reloj={c['clock']}. Evidencia del vínculo: {', '.join(c['evidence'])}.")
-        add(c["reason"])
-    if not result["incidents"]:
-        add("Sin asociaciones que cumplan todas las claves y la ventana. Esto no descarta incidentes.")
-    add("5. Observables", "Heading1")
-    add("Inventario de IP de origen. No se consultó reputación externa. La aparición en registros no convierte una IP en IOC.")
-    table([["IP", "Clasificación", "Eventos"]] +
-          [[o["value"], o["kind"], o["count"]] for o in result["observables"]], [45*mm, 105*mm, 20*mm])
-    add("6. Plan de acción y recomendaciones", "Heading1")
-    for title, body in [
-        ("P1 · Investigar y preservar · Analista L2 / IR", "Preservar el XLSX con su hash, obtener eventos originales y EDR de los activos citados. Validar primero hallazgos críticos y altos. Cierre: otro analista reproduce la evidencia y se confirma o refuta cada hipótesis."),
-        ("P2 · Contener condicionalmente · Responsable IR / TI", "Si se acredita actividad no autorizada, aprobar aislamiento de equipos o revocación de sesiones con el dueño del servicio. Riesgo: interrupción de negocio. Cierre: la contención autorizada se verifica en telemetría y queda documentada; no ejecutada por esta aplicación."),
-        ("P3 · Remediar · Administradores / dueño del activo", "Tras determinar causa y alcance, corregir accesos, retirar persistencia confirmada y recuperar desde copias verificadas. Cierre: cambios aprobados, pruebas de restauración y ausencia de recurrencia durante un periodo acordado con cobertura acreditada."),
-        ("Prevención · Seguridad / TI", "Aplicar MFA, mínimo privilegio, segmentación, protección de respaldos y recolección centralizada. Registrar zona horaria, LogonId y GUID de procesos. Validar controles con ejercicios autorizados y medir detecciones con datos etiquetados."),
-        ("Handoff propuesto a IR/L3", "Adjuntar hash, filas, cronología, cuentas/hosts, hipótesis, alternativas y faltantes. Pregunta: ¿qué actividad fue autorizada y qué sesiones/procesos vinculan las señales? Escalar si se confirma daño, alcance sensible o necesidad forense. No se ha enviado este paquete ni ejecutado contención."),
-    ]:
-        add(title, "Heading3")
-        add(body)
-    add("7. Limitaciones y estado operativo", "Heading1")
-    for limit in result["limitations"]:
-        add(limit)
-    add("Estado: investigación propuesta; número y existencia de incidentes confirmados no determinables automáticamente. El informe es un cierre documental, no un cierre operativo.")
-    story.append(PageBreak())
-    add("Anexo A · Evidencia exacta", "Heading1")
-    add("Se incluyen todas las filas citadas por los hallazgos, una vez por referencia, con todos sus campos originales. El JSON descargable conserva además todas las filas del libro y las normalizaciones. Las entidades XML se muestran como texto; no se ejecutan comandos, fórmulas ni enlaces.")
-    refs = {r for f in result["findings"] for r in f["evidence"]}
-    for e in result["events"]:
-        if e["ref"] not in refs:
-            continue
-        add(f"{e['ref']} · Hoja {e['sheet']} · Fila {e['row']} · {e['log_id'] or 'sin Log_ID'}", "Heading3")
-        add(f"Hora UTC: {e['utc'] or 'no determinada'} · Dominio: {e['clock']} · SHA-256 de la fila: {e['fingerprint']}", "EvidenceText")
-        for field, value in e["raw"].items():
-            value = f"{field}: {value}"
-            # Bounded paragraphs avoid oversized, unsplittable table cells.
-            for start in range(0, len(value), 1800):
-                add(value[start:start+1800], "EvidenceText")
-    if result["ai"]["candidates"]:
-        add("Anexo B · Priorización estadística", "Heading1")
-        table([["Referencia", "Score (no probabilidad)", "Contexto verificable"]] +
-              [[c["ref"], c["score"], c["reason"]] for c in result["ai"]["candidates"]], [30*mm, 40*mm, 100*mm])
+    m = result["metadata"]
+    context = m.get("case_context", {})
 
+    # ------------------ PORTADA / ENCABEZADO ------------------
+    add("BOOTCAMP ANALISTA SOC NIVEL 2", "CoverSubtitle")
+    add("Informe técnico de investigación de incidentes de seguridad", "CoverTitle")
+
+    meta_table = [
+        ["Cliente", context.get("client") or "Cliente corporativo (CORP)"],
+        ["Elaborado por", context.get("analyst") or "Analista SOC L2 (Generado por Motor)"],
+        ["Consultora", context.get("company") or "No indicada"],
+        ["Referencia", context.get("reference") or "No indicada"],
+        ["Archivo analizado", m['filename']],
+        ["Periodo analizado", f"{result['timeline'][0]['clock']} - {result['timeline'][-1]['clock']}" if result.get("timeline") else "N/D"],
+        ["Fecha del informe", result['generated_at']],
+        ["Clasificación", "CONFIDENCIAL - uso exclusivo del cliente"]
+    ]
+    make_table(meta_table, [45*mm, 125*mm], is_header_dark=False)
+    add(f"SHA-256 del archivo original: {m['sha256']}")
+    story.append(Spacer(1, 10))
+
+    # ------------------ 1. RESUMEN EJECUTIVO ------------------
+    add("1. Resumen ejecutivo", "Heading1")
+    add(f"Se analizaron {m.get('rows', 0)} eventos exportados correspondientes al archivo provisto. El motor de análisis correlacionó los eventos sospechosos en {len(result.get('findings', []))} hallazgos estructurados.")
+    for fact in result["narrative"]["facts"]:
+        add(f"• {fact}")
+    add(result["narrative"]["review"])
+
+    # Conteo rápido de criticidades
+    crit_counts = {"Crítico": 0, "Alto": 0, "Medio": 0, "Bajo": 0}
+    for f in result.get("findings", []):
+        sev = f.get("severity", "Informativo").capitalize()
+        if sev in crit_counts: crit_counts[sev] += 1
+
+    resumen_crit = f"<b>Severidades identificadas:</b> {crit_counts['Crítico']} Crítico(s), {crit_counts['Alto']} Alto(s), {crit_counts['Medio']} Medio(s)."
+    add(resumen_crit)
+
+    # ------------------ 2. ALCANCE Y METODOLOGÍA ------------------
+    add("2. Alcance y metodología", "Heading1")
+    add("El procesamiento se realizó mediante análisis de heurística y reglas correlacionales. Las reglas evalúan proveedor, Event_ID y campos concretos (fuerza bruta, éxito posterior, acceso a objetos masivos, transferencias).")
+
+    metodologia_table = [
+        ["Criticidad", "Criterio aplicado", "Tiempo de respuesta"],
+        ["Crítico", "Impacto confirmado o inminente: exfiltración, destrucción de copias, ejecución remota, compromiso lateral.", "Inmediato (< 1 h)"],
+        ["Alto", "Actividad maliciosa clara (persistencia, privilegios, ataque dirigido) sin impacto confirmado.", "< 4 h"],
+        ["Medio", "Anomalía o intento sin éxito; requiere verificación.", "< 24 h"],
+        ["Bajo", "Informativo o de higiene de seguridad.", "Planificado"]
+    ]
+    make_table(metodologia_table, [30*mm, 100*mm, 40*mm])
+
+    # ------------------ 3. HALLAZGOS IDENTIFICADOS ------------------
+    add("3. Hallazgos identificados", "Heading1")
+    if not result.get("findings"):
+        add("Ninguna regla produjo hallazgos. Esto no demuestra ausencia de actividad maliciosa.")
+    else:
+        hallazgos_table = [["ID", "Hallazgo", "Criticidad", "Ventana", "Activos/Cuentas"]]
+        for f in result["findings"]:
+            activos = f"{', '.join(f.get('hosts', []))} / {', '.join(f.get('users', []))}"
+            ventana = f"{f.get('start', 'N/D').split(' ')[-1]} - {f.get('end', 'N/D').split(' ')[-1]}" # Solo la hora para acortar
+            hallazgos_table.append([f['id'], f['title'], f['severity'].upper(), ventana, activos[:50]])
+        make_table(hallazgos_table, [20*mm, 60*mm, 25*mm, 25*mm, 40*mm])
+
+    # ------------------ 4. DETALLE TÉCNICO DE CADA HALLAZGO ------------------
+    add("4. Detalle técnico de cada hallazgo", "Heading1")
+
+    # Mapa de eventos para extracción rápida
+    event_map = {e["ref"]: e for e in result.get("events", [])}
+
+    for f in result.get("findings", []):
+        add(f"{f['id']} - {f['title']}", "Heading2")
+
+        # Tabla resumen del hallazgo
+        f_meta = [
+            ["Criticidad", f"<b><font color='{get_severity_color(f['severity']).hexval()}'>{f['severity'].upper()}</font></b>"],
+            ["Ventana", f"{f.get('start', 'N/D')} - {f.get('end', 'N/D')}"],
+            ["Equipos", ", ".join(f.get('hosts', [])) or "N/D"],
+            ["Cuentas", ", ".join(f.get('users', [])) or "N/D"],
+            ["Regla Asociada", f.get('rule', 'N/D')],
+            ["Eventos asociados", str(len(f.get('evidence', [])))]
+        ]
+        make_table(f_meta, [40*mm, 130*mm], is_header_dark=False)
+
+        add("EXPLICACIÓN TÉCNICA", "Heading3")
+        add(f"<b>Observación:</b> {f.get('observation', 'N/D')}")
+        add(f"<b>Justificación:</b> {f.get('rationale', 'N/D')}")
+        add(f"<b>Alternativa legítima:</b> {f.get('alternative', 'N/D')}")
+
+        add("EVIDENCIAS EN LOS LOGS", "Heading3")
+        ev_table = [["Ref", "Hora", "Equipo / Hoja", "Evento / ID", "Usuario", "Detalle Clave"]]
+
+        for ref in f.get("evidence", [])[:10]: # Limitar a 10 para no desbordar el PDF por cada hallazgo
+            if ref in event_map:
+                ev = event_map[ref]
+                raw = ev.get("raw", {})
+
+                # Extracción heurística de campos comunes de SIEM
+                hora = ev.get("clock", ev.get("utc", ""))
+                equipo = raw.get("Computer", raw.get("DestinationHostname", ev.get("sheet", "N/D")))
+                evento = raw.get("EventID", ev.get("log_id", "N/D"))
+                usuario = raw.get("TargetUserName", raw.get("SubjectUserName", raw.get("SourceUserName", "N/D")))
+
+                # Resumir el payload descartando llaves vacías
+                detalle = ", ".join([f"{k}:{v}" for k, v in raw.items() if v and k not in ["Computer", "EventID", "TargetUserName", "SubjectUserName"]])
+                detalle_truncado = detalle[:90] + "..." if len(detalle) > 90 else detalle
+
+                ev_table.append([ref, str(hora)[:19], str(equipo), str(evento), str(usuario), detalle_truncado])
+
+        if len(f.get("evidence", [])) > 10:
+            ev_table.append(["...", "...", "...", "...", "...", f"(+ {len(f['evidence']) - 10} eventos similares de la misma alerta)"])
+
+        make_table(ev_table, [15*mm, 25*mm, 30*mm, 25*mm, 25*mm, 50*mm])
+
+        add("CRITICIDAD Y JUSTIFICACIÓN / IMPACTO", "Heading3")
+        add(f.get('impact', 'No documentado.'))
+
+        add("PLAN DE ACCIÓN SUGERIDO", "Heading3")
+        action_table = [
+            ["INVESTIGAR (Validación)", "CONTENER / REMEDIAR (Acción)"],
+            [f.get('validation', 'N/D'), f.get('action', 'N/D')]
+        ]
+        make_table(action_table, [85*mm, 85*mm])
+        story.append(Spacer(1, 15))
+
+    # ------------------ 5. LÍNEA DE TIEMPO CONSOLIDADA ------------------
+    story.append(PageBreak())
+    add("5. Línea de tiempo consolidada", "Heading1")
+    if result.get("timeline"):
+        tl_table = [["Hora / Dominio", "Eventos únicos", "Eventos Flaggeados (Regla)"]]
+        for t in result["timeline"]:
+            tl_table.append([f"{t['hour']} · {t['clock']}", str(t["events"]), str(t["flagged"])])
+        make_table(tl_table, [70*mm, 50*mm, 50*mm])
+    else:
+        add("No hay línea de tiempo disponible.")
+
+    # ------------------ 6. OBSERVABLES / IoC ------------------
+    add("6. Indicadores de compromiso y Observables (IoC)", "Heading1")
+    add("Inventario de entidades extraídas. La aparición en registros no convierte automáticamente una IP en maliciosa; requiere validación externa de reputación.")
+    if result.get("observables"):
+        ioc_table = [["Valor (IP / Entidad)", "Clasificación", "Apariciones"]]
+        for o in result["observables"]:
+            ioc_table.append([str(o["value"]), str(o["kind"]), str(o["count"])])
+        make_table(ioc_table, [70*mm, 70*mm, 30*mm])
+    else:
+        add("No se extrajeron observables.")
+
+    # ------------------ 7. RECOMENDACIONES GENERALES ------------------
+    add("7. Recomendaciones generales de seguridad", "Heading1")
+    recomendaciones = [
+        "Autenticación multifactor (MFA) obligatoria para VPN, RDP, correo y cuentas privilegiadas.",
+        "Políticas de bloqueo de cuenta y detección de password spraying en el SIEM.",
+        "Gestión de cuentas privilegiadas: modelo por niveles (tiering), cuentas admin nominativas separadas del uso habitual.",
+        "Protección de Endpoints: EDR activo, bloqueo de ejecución desde carpetas temporales y restricción de PowerShell (Constrained Language Mode).",
+        "Segmentación de red: restringir RDP/SMB directo entre estaciones de trabajo y servidores; habilitar únicamente flujos justificados."
+    ]
+    for r in recomendaciones:
+        add(f"• {r}")
+
+    story.append(Spacer(1, 15))
+    for limit in result.get("limitations", []):
+        add(f"<i>Nota operativa: {limit}</i>", "TableText")
+
+    story.append(PageBreak())
+    add("Anexo A. Evidencia original citada", "Heading1")
+    cited = {ref for finding in result.get("findings", []) for ref in finding["evidence"]}
+    for event in result.get("events", []):
+        if event["ref"] not in cited:
+            continue
+        add(f"{event['ref']} · Hoja: {event['sheet']} · Fila: {event['row']}", "Heading3")
+        for key, value in event["raw"].items():
+            add(f"{key}: {value}")
+    if not cited:
+        add("No hay filas citadas por los hallazgos actuales.")
+
+    # ------------------ PIE DE PÁGINA ------------------
     def footer(canvas, doc):
         canvas.saveState()
         canvas.setFont(FONT, 8)
         canvas.setFillColor(colors.HexColor("#65748b"))
-        canvas.drawString(20*mm, 12*mm, "SOC Lens · Evidencia local · Pendiente de validación humana")
-        canvas.drawRightString(190*mm, 12*mm, str(doc.page))
+        canvas.drawString(20*mm, 15*mm, "Analista SOC N2 (Motor de Análisis Automático)")
+        canvas.drawCentredString(105*mm, 15*mm, "CONFIDENCIAL")
+        canvas.drawRightString(190*mm, 15*mm, f"Página {doc.page}")
         canvas.restoreState()
 
     doc = SimpleDocTemplate(output, pagesize=A4, rightMargin=20*mm, leftMargin=20*mm,
-                            topMargin=18*mm, bottomMargin=22*mm,
-                            title="SOC Lens - Informe de seguridad", author="SOC Lens")
+                            topMargin=20*mm, bottomMargin=25*mm,
+                            title="Informe Técnico SOC L2", author="SOC L2")
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return output.getvalue()

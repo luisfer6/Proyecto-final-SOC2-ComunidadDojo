@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#182330">
+  <title>SOC Lens · Investigación con evidencia</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%230e9988'/%3E%3Cpath d='M20 7l11 4v10c0 7-11 13-11 13S9 28 9 21V11z' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./browser.js" defer></script>
+  <script src="./app.js" defer></script>
+  <script src="./default-case.js" defer></script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Saltar al contenido</a>
+  <aside class="sidebar">
+    <a class="brand" href="./" aria-label="SOC Lens, inicio"><span class="brand-mark">◈</span><span>SOC<span class="brand-light">Lens</span><small>INTELIGENCIA CON EVIDENCIA</small></span></a>
+    <div class="workspace-label">ESPACIO DE INVESTIGACIÓN</div>
+    <nav aria-label="Navegación principal">
+      <button class="nav-item active" data-view="overview"><span aria-hidden="true">▦</span> Resumen <span class="nav-dot"></span></button>
+      <button class="nav-item" data-view="findings"><span aria-hidden="true">◎</span> Hallazgos <span id="nav-count" class="nav-count">0</span></button>
+      <button class="nav-item" data-view="events"><span aria-hidden="true">≡</span> Explorador de eventos</button>
+      <button class="nav-item" data-view="correlations"><span aria-hidden="true">◇</span> Correlaciones</button>
+      <button class="nav-item" data-view="report"><span aria-hidden="true">▤</span> Informe técnico</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="privacy-icon">⌾</div><strong>Tu evidencia, en tu navegador</strong>
+      <p>El Excel se procesa en esta pestaña. Sus datos no se envían al alojamiento.</p>
+      <div class="analyst"><span class="avatar">L2</span><div>Analista SOC<small>Proyecto final · Comunidad Dojo</small></div></div>
+    </div>
+  </aside>
+  <div class="shell">
+    <header class="topbar">
+      <div class="breadcrumb">Investigaciones <span>/</span> <strong id="breadcrumb-current">Nuevo análisis</strong></div>
+      <span id="connection" class="connection" data-status="online" role="status"><i aria-hidden="true"></i><span id="connection-label">Análisis en tu navegador</span></span>
+    </header>
+    <main id="main">
+      <section class="page-heading">
+        <div><div class="eyebrow">WORKSPACE / SOC NIVEL 2</div><h1 id="page-title">De registros a respuestas.</h1><p id="page-description">Investiga señales, conecta evidencias y documenta tus conclusiones.</p></div>
+        <button id="download-top" class="button primary hidden" type="button"><span aria-hidden="true">↓</span> Exportar informe PDF</button>
+      </section>
+
+      <div id="notice" class="notice hidden" role="status" aria-live="polite"></div>
+      <section class="dataset-intro panel"><div><span class="eyebrow">LABORATORIO DE INVESTIGACIÓN</span><h2>Explora. Investiga. Documenta.</h2><p>Un caso listo para explorar y tus propios datos cuando los necesites.</p></div><span class="pill local">100% estático · Sin servidor de análisis</span></section>
+      <section id="upload-section" class="upload-card">
+        <div id="dropzone" class="dropzone">
+          <div class="upload-icon" aria-hidden="true">↥</div>
+          <div class="upload-copy"><h2>Tu Excel, tu investigación</h2><p>Ya tienes un ejemplo cargado. Arrastra otro Excel para reemplazarlo.</p><small>XLSX · Hasta 10 MB · Máximo 30 000 eventos · Procesamiento local</small></div>
+          <label class="button primary file-label">Cambiar Excel<input id="file-input" type="file" accept=".xlsx" aria-label="Seleccionar archivo Excel"></label>
+        </div>
+        <div class="dataset-actions"><span id="dataset-status" class="dataset-badge">EJEMPLO SINTÉTICO</span><a href="./data/demo-sintetica.xlsx" download class="text-button">↓ Descargar Excel incluido</a><button id="restore-default" class="button secondary" type="button">↺ Restaurar ejemplo</button></div><details class="case-settings" open><summary>Datos del caso <span>Se incluyen en el PDF y JSON</span></summary><div class="case-fields"><label for="case-analyst">Analista<input id="case-analyst" maxlength="120" value="Analista SOC L2" autocomplete="off"></label><label for="case-client">Cliente<input id="case-client" maxlength="120" value="Cliente corporativo (CORP)" autocomplete="off"></label><label for="case-company">Consultora<input id="case-company" maxlength="120" value="Comunidad Dojo" autocomplete="off"></label><label for="case-reference">Referencia<input id="case-reference" maxlength="120" placeholder="Ej. SOC-2026-001" autocomplete="off"></label></div><p class="fine-print">Los cambios se conservan durante esta sesión. Al recargar se vuelve al ejemplo incluido.</p></details><div class="upload-options"><label for="timezone">Zona de las fechas sin desfase</label><select id="timezone"><option value="">No declarada · conservar hora original</option><option value="0">UTC (confirmado por el analista)</option><option value="60">UTC+01:00</option><option value="120">UTC+02:00</option><option value="-180">UTC−03:00</option><option value="-240">UTC−04:00</option><option value="-300">UTC−05:00</option><option value="-360">UTC−06:00</option></select><span>No se deduce por la ubicación del cliente.</span></div>
+      </section>
+
+      <section id="loading" class="loading hidden" aria-live="polite"><span class="spinner"></span><div><strong>Investigando tu evidencia…</strong><p>Validando filas, aplicando reglas y entrenando el modelo local.</p></div></section>
+      <p class="fine-print">El ejemplo se abre al instante. Para analizar otro Excel o generar un PDF se descarga el motor y sus dependencias. El Excel se procesa en esta pestaña. <a href="./guia-ollama.html" target="_blank" rel="noopener">Cómo conectar Ollama local</a>.</p>
+      <section id="empty-state" class="welcome-grid">
+        <article class="welcome-card"><span class="step">01 / EXPLORA</span><h3>Una fila, una referencia.</h3><p>Consulta el evento original, su hoja y su número de fila. Cada hallazgo conserva un vínculo con la evidencia.</p><div class="mini-log"><span>Evento → Señal → Hipótesis</span><span>Revisión humana → Decisión</span></div></article>
+        <article class="welcome-card"><span class="step">02 / INVESTIGA</span><h3>Contexto antes que conclusiones.</h3><p>Fuerza bruta, privilegios, comandos, movimiento lateral y otras señales. Con criticidad, alternativas y validaciones.</p><div class="mini-tags"><span>Reglas explicables</span><span>IA local</span></div></article>
+        <article class="welcome-card"><span class="step">03 / DOCUMENTA</span><h3>Un informe que puedes defender.</h3><p>Resumen ejecutivo, análisis técnico y evidencias exactas. Exporta el PDF y un JSON con el análisis completo.</p><div class="mini-tags"><span>PDF con evidencia</span><span>SHA-256</span></div></article>
+      </section>
+
+      <div id="case-content" class="hidden">
+        <div class="case-strip"><div><span class="file-icon" aria-hidden="true">▤</span><strong id="case-filename"></strong><span id="case-rows" class="muted"></span></div><div><span class="pill local">Procesado en local</span><button id="clear-case" class="text-button">Eliminar caso</button></div></div>
+        <div class="case-disclaimer"><span aria-hidden="true">ⓘ</span> Las detecciones son señales para investigar. La existencia y el número de incidentes requieren validación humana.</div>
+        <section id="view-overview" class="view">
+          <div id="stats" class="stats-grid"></div>
+          <div class="dashboard-grid">
+            <article class="panel activity-panel"><div class="panel-heading"><div><h2>Actividad observada</h2><p>Eventos por hora · Selecciona una barra para explorar</p></div><div class="chart-legend"><span class="dot teal"></span> Total <span class="dot orange"></span> Con señal</div></div><div id="timeline-chart" class="timeline-chart"></div><div id="timeline-caption" class="chart-caption"></div></article>
+            <article class="panel risk-panel"><div class="panel-heading"><div><h2>Criticidad de hallazgos</h2><p>Prioridad de revisión, no certeza</p></div></div><div id="risk-chart"></div></article>
+          </div>
+          <div class="dashboard-grid bottom-grid">
+            <article class="panel"><div class="panel-heading"><div><h2>Prioridad de investigación</h2><p>Hallazgos con mayor impacto potencial</p></div><button class="text-button" data-view="findings">Ver todos →</button></div><div id="top-findings"></div></article>
+            <article class="panel ai-panel"><div class="panel-heading"><div><span class="pill ai-pill">IA LOCAL</span><h2>Otra perspectiva sobre tus logs</h2></div><span class="sparkle" aria-hidden="true">✧</span></div><p id="ai-summary"></p><div id="ai-candidates"></div><p class="fine-print">La rareza estadística no es probabilidad de ataque. Se contrasta con el contexto y las reglas.</p></article>
+          </div>
+          <details class="panel quality-panel"><summary>Calidad y cobertura de la evidencia <span id="quality-count"></span></summary><div id="quality-content"></div></details>
+        </section>
+        <section id="view-findings" class="view hidden">
+          <div class="toolbar"><div id="severity-filters" class="filter-pills" aria-label="Filtrar por criticidad"></div><label class="search"><span aria-hidden="true">⌕</span><input id="finding-search" placeholder="Buscar hallazgo, cuenta o equipo…" aria-label="Buscar hallazgos"></label></div>
+          <div id="findings-list" class="findings-list"></div>
+        </section>
+        <section id="view-events" class="view hidden">
+          <div class="toolbar"><div><strong id="events-count"></strong><button id="reset-events" class="text-button">Limpiar filtros</button></div><label class="search"><span aria-hidden="true">⌕</span><input id="event-search" placeholder="Buscar en todos los campos…" aria-label="Buscar eventos"></label></div>
+          <div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>Referencia / ID</th><th>Hora original</th><th>Equipo</th><th>Evento / Fuente</th><th>Cuenta</th><th>Origen</th><th>Resultado</th></tr></thead><tbody id="events-body"></tbody></table></div><div class="pagination"><span id="page-info"></span><div><button id="previous-page" class="button secondary">← Anterior</button><button id="next-page" class="button secondary">Siguiente →</button></div></div></div>
+        </section>
+        <section id="view-correlations" class="view hidden">
+          <div class="info-banner"><strong>Asociaciones contextuales, sin fusionar incidentes.</strong><p>Cada par comparte equipo, cuenta e IP en un intervalo de hasta 30 minutos. Faltan claves de sesión y proceso para demostrar causalidad.</p></div><div id="correlations-list" class="correlation-grid"></div>
+        </section>
+        <section id="view-report" class="view hidden">
+          <div class="report-layout"><article class="panel report-preview"><div class="report-kicker">SOC LENS / INFORME DE SEGURIDAD</div><h2>La investigación, documentada.</h2><span class="pill pending">Borrador · Revisión humana</span><p id="case-context-preview" class="fine-print"></p><h3>Resumen ejecutivo</h3><div id="executive-summary"></div><h3>Alcance y limitaciones</h3><div id="report-limitations"></div><h3>Plan de acción propuesto</h3><ol class="action-list"><li><strong>Investigar y preservar.</strong> Validar registros, sesiones y autorizaciones con L2 / IR.</li><li><strong>Contener si se confirma actividad no autorizada.</strong> Acordar el impacto y verificar la medida.</li><li><strong>Remediar y validar.</strong> Corregir la causa, verificar recuperación y revisar recurrencia.</li></ol><p class="fine-print">El PDF incluye todos los hallazgos, su justificación, alternativas, cronología y un anexo con cada fila citada.</p></article>
+          <aside class="report-actions panel"><h3>Entregar con trazabilidad</h3><p>El informe utiliza el mismo análisis del dashboard. Sin hallazgos añadidos por generación libre.</p><button id="download-report" class="button primary">↓ Descargar PDF</button><button id="download-json" class="button secondary">↓ Descargar evidencias JSON</button><hr><span class="pill ai-pill">ASISTENTE OPCIONAL</span><h3>Priorizar el resumen con IA</h3><p>Ollama local puede elegir qué hallazgos destacar. Sólo selecciona referencias existentes y conserva frases verificadas.</p><div class="ollama-connect"><label for="ollama-model">Modelo local</label><input id="ollama-model" value="qwen3:4b" maxlength="120" spellcheck="false"><button id="connect-ollama" class="button secondary">Conectar Ollama en este equipo</button><small id="ollama-connection-status" role="status">Cada visitante utiliza su propia instalación de Ollama. Se envían sólo IDs, regla, criticidad y cantidad de evidencias.</small><p><a href="./guia-ollama.html" target="_blank" rel="noopener">Guía de conexión</a></p></div><button id="assist-button" class="button secondary">Priorizar con Ollama</button><small id="ollama-status"></small><hr><h4>Huella del archivo original</h4><code id="file-hash"></code><p class="fine-print">El caso permanece en la memoria de esta pestaña. Al recargarla o cerrarla se borra. Guarda tu PDF y JSON antes de salir.</p></aside></div>
+        </section>
+      </div>
+      <footer class="page-footer"><span>SOC Lens <span class="muted">/</span> Bootcamp Analista SOC Nivel 2</span><span>Evidencia primero. Decisiones informadas.</span></footer>
+    </main>
+  </div>
+  <dialog id="detail-dialog" aria-labelledby="dialog-title"><div class="dialog-header"><div><div class="eyebrow">DETALLE DE INVESTIGACIÓN</div><h2 id="dialog-title"></h2></div><button id="close-dialog" class="icon-button" aria-label="Cerrar detalle">×</button></div><div id="dialog-content"></div></dialog>
+</body>
+</html>

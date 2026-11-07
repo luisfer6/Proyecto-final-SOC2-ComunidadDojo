@@ -9,6 +9,8 @@ __pycache__/
 artifacts/*
 !artifacts/.gitkeep
 *.xlsx
+!docs/data/demo-sintetica.xlsx
 *.pdf
 *.log
 .coverage
+sites/

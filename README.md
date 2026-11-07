@@ -1,6 +1,6 @@
 # SOC Lens
 
-Aplicación web local para investigar exportaciones SIEM en Excel. Detecta patrones
+Aplicación web para investigar exportaciones SIEM en Excel. Detecta patrones
 de autenticación, privilegios, comandos, administración remota, actividad web,
 persistencia y transferencias; conserva la evidencia de cada hallazgo y genera
 un informe PDF con resumen ejecutivo y anexo técnico.
@@ -9,7 +9,51 @@ un informe PDF con resumen ejecutivo y anexo técnico.
 un incidente ni atribuye actividad a un actor.** Las correlaciones se presentan
 como hipótesis con claves, ventana y limitaciones explícitas.
 
-## Inicio rápido en Windows
+## Abrir desde GitHub Pages
+
+**[Abrir SOC Lens](https://luisfer6.github.io/Proyecto-final-SOC2-ComunidadDojo/)**
+
+La web carga un Excel sintético incluido. Usa **Cambiar Excel** para investigar
+otro archivo y **Restaurar ejemplo** para volver al caso inicial. Puedes editar
+analista, cliente, consultora y referencia y descargar el informe PDF y el JSON.
+Los archivos elegidos se procesan en la memoria de tu navegador; no se suben a
+GitHub. Al recargar se vuelve al ejemplo. No necesitas instalar Python ni iniciar
+un servidor. El motor de análisis se descarga desde CDN cuando se necesita;
+la primera carga de otro Excel o del PDF requiere conexión y puede tardar.
+Ollama es opcional y utiliza la instalación de cada visitante.
+
+Cada actualización de `main` ejecuta `.github/workflows/pages.yml`: verifica el
+análisis, genera la web y publica en Pages. En **Settings → Pages → Source** debe
+estar seleccionado **GitHub Actions**. El estado se consulta en la pestaña
+**Actions**, workflow **Publicar SOC Lens en GitHub Pages**.
+
+Para regenerar los archivos publicables localmente:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/build_browser.py
+```
+
+La salida es `docs/`, con rutas relativas compatibles con la URL del repositorio.
+El generador crea el ejemplo sintético si falta. Para cambiar permanentemente el
+ejemplo, modifica `scripts/generate_demo.py` y vuelve a publicar. El Excel que el
+visitante selecciona sólo reemplaza su caso en esa pestaña.
+
+## Estructura del proyecto
+
+| Carpeta | Contenido |
+|---|---|
+| `web/` | Adaptador, worker y controles de la edición de navegador |
+| `static/` | Interfaz compartida con la edición local |
+| `app/` | Reglas, lectura del Excel, PDF y API local opcional |
+| `scripts/` | Generación del ejemplo y de la web publicable |
+| `docs/` | Web estática generada y documentación |
+| `tests/` | Pruebas del análisis y exportaciones |
+| `.github/workflows/` | Verificación y publicación automática |
+
+`sites/` contiene una publicación alternativa de desarrollo y se excluye del
+repositorio. GitHub Pages utiliza la salida de `docs/`.
+
+## Edición local opcional: inicio rápido en Windows
 
 Requisito: Python 3.14 y acceso a internet sólo para instalar dependencias.
 El entorno de desarrollo se verificó con CPython 3.14 en Windows.
@@ -100,6 +144,11 @@ con un runtime real; el validador y los fallos de configuración tienen pruebas.
 
 ## Arquitectura y reglas
 
+En GitHub Pages, el navegador ejecuta las reglas Python mediante Pyodide en un
+Web Worker. El ejemplo está precalculado para mostrar el dashboard de inmediato.
+PDF, cambios de Excel y selección opcional con Ollama utilizan el mismo motor.
+El esquema siguiente corresponde a la edición local opcional:
+
 ```text
 Navegador: HTML / CSS / JavaScript (sin CDN)
     │ XLSX local
@@ -121,6 +170,11 @@ correlaciones; `app/ingest.py`, normalización; `app/report.py`, PDF;
 `app/assistant.py`, selección con LLM; `app/main.py`, API y ciclo de casos.
 
 ## Privacidad y uso local
+
+En Pages sólo se publica el ejemplo sintético. Los Excel del visitante se
+procesan en la memoria de su pestaña y no modifican el repositorio. El motor y
+sus dependencias se descargan de CDN; al usar Ollama se envía la selección de
+hallazgos a la instalación local que el visitante conecta explícitamente.
 
 La aplicación escucha en loopback. No tiene autenticación multiusuario: no debe
 exponerse directamente a una red. Host y origen se validan, las respuestas tienen
@@ -157,5 +211,7 @@ las capturas y entregables se guardan en `artifacts/`.
 
 El video, de hasta cinco minutos, lo graba el autor. El PDF se genera desde la
 aplicación; los artefactos de una investigación nunca se publican por defecto.
-`.gitignore` excluye `.devin/` completo, Excel, PDF, artefactos, secretos y entornos.
+`.gitignore` excluye `.devin/` completo, Excel, PDF, artefactos, secretos y entornos;
+la única excepción de Excel es `docs/data/demo-sintetica.xlsx`, generado con datos
+sintéticos para la web.
 Las skills y el material de los cursos no forman parte del código publicable.

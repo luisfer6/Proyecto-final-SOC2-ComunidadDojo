@@ -1,6 +1,11 @@
 @echo off
 setlocal
 cd /d "%~dp0"
+if not defined OLLAMA_MODEL if exist "artifacts\ollama-model.txt" set /p OLLAMA_MODEL=<"artifacts\ollama-model.txt"
+if defined OLLAMA_MODEL (
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start_ollama.ps1"
+  if errorlevel 1 goto error
+)
 if not exist ".venv\Scripts\python.exe" (
   echo Creando entorno local...
   python -m venv .venv

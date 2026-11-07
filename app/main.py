@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .analysis import analyze
-from .assistant import assist
+from .assistant import assist, ollama_status
 from .ingest import MAX_UPLOAD, read_workbook
 from .report import make_pdf
 
@@ -100,8 +100,8 @@ async def local_security(request: Request, call_next):
 
 
 @app.get("/api/health")
-def health():
-    return {"status": "ok", "version": "1.0.0", "ai": "Isolation Forest local", "ollama_configured": bool(os.getenv("OLLAMA_MODEL"))}
+async def health():
+    return {"status": "ok", "version": "1.0.0", "ai": "Isolation Forest local", **(await ollama_status())}
 
 
 @app.post("/api/analyze")
