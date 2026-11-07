@@ -5,20 +5,19 @@ La web publicable queda en `docs/` y puede alojarse
 en un servicio estático, incluido GitHub Pages. Sirve esa carpeta por HTTP;
 abrir `index.html` directamente con `file://` no permite cargar sus recursos.
 
-Al abrir, muestra el análisis precalculado de `artifacts/demo-sintetica.xlsx`.
-Ese es el único Excel que se incluye en la publicación. Para cambiar el Excel
-predeterminado de forma permanente, modifica `scripts/generate_demo.py`, elimina
-tu copia generada en `artifacts/` y vuelve a generar la web. En GitHub Actions se
-genera desde el código del ejemplo, porque `artifacts/` no se sube al repositorio.
-Mantén datos sintéticos si la publicación es pública.
+Al abrir, muestra el análisis precalculado del Excel versionado en
+`web/data/SOC_L2_Logs_Ampliados_Multiples_Incidentes.xlsx`. Ese archivo y su
+análisis se publican por petición del autor. Para cambiarlo permanentemente,
+reemplaza el archivo fuente y vuelve a generar y publicar la web.
+GitHub Actions usa el mismo Excel; no genera ni incluye el demo.
 
 El visitante puede cambiar el archivo con **Cambiar Excel** o arrastrarlo,
-descargar el original y volver al caso inicial con **Restaurar ejemplo**.
+descargar el original y volver al caso inicial con **Restaurar Excel del proyecto**.
 Los archivos del visitante se procesan en memoria y no cambian el Excel
-predeterminado de otros visitantes. Al recargar vuelve el ejemplo.
+predeterminado de otros visitantes. Al recargar vuelve el Excel del proyecto.
 
 Los campos de analista, cliente, consultora y referencia se incluyen en
-las exportaciones PDF y JSON. El ejemplo se visualiza sin cargar Python;
+las exportaciones PDF y JSON. El caso incluido se visualiza sin cargar Python;
 para analizar otros Excel o generar un PDF se descargan Pyodide y sus
 dependencias. Se requiere conexión en esa primera descarga. Ollama es opcional.
 

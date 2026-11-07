@@ -43,7 +43,7 @@
       if (url === '/api/health') return response({status:'ok',...ollama});
       if (url === '/api/default') {
         const res = await fetch('./data/default-case.json');
-        if (!res.ok) throw new Error('No se pudo abrir el ejemplo. Puedes seleccionar otro Excel.');
+        if (!res.ok) throw new Error('No se pudo abrir el Excel del proyecto. Puedes seleccionar otro Excel.');
         currentData = await res.json();
         currentCase = currentData.id;
         return response(currentData);

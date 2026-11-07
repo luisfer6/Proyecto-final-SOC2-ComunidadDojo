@@ -13,11 +13,11 @@ como hipótesis con claves, ventana y limitaciones explícitas.
 
 **[Abrir SOC Lens](https://luisfer6.github.io/Proyecto-final-SOC2-ComunidadDojo/)**
 
-La web carga un Excel sintético incluido. Usa **Cambiar Excel** para investigar
-otro archivo y **Restaurar ejemplo** para volver al caso inicial. Puedes editar
+La web carga `SOC_L2_Logs_Ampliados_Multiples_Incidentes.xlsx`, incluido en el repositorio. Usa **Cambiar Excel** para investigar
+otro archivo y **Restaurar Excel del proyecto** para volver al caso inicial. Puedes editar
 analista, cliente, consultora y referencia y descargar el informe PDF y el JSON.
 Los archivos elegidos se procesan en la memoria de tu navegador; no se suben a
-GitHub. Al recargar se vuelve al ejemplo. No necesitas instalar Python ni iniciar
+GitHub. Al recargar se vuelve al Excel del proyecto. No necesitas instalar Python ni iniciar
 un servidor. El motor de análisis se descarga desde CDN cuando se necesita;
 la primera carga de otro Excel o del PDF requiere conexión y puede tardar.
 Ollama es opcional y utiliza la instalación de cada visitante.
@@ -34,8 +34,8 @@ Para regenerar los archivos publicables localmente:
 ```
 
 La salida es `docs/`, con rutas relativas compatibles con la URL del repositorio.
-El generador crea el ejemplo sintético si falta. Para cambiar permanentemente el
-ejemplo, modifica `scripts/generate_demo.py` y vuelve a publicar. El Excel que el
+El generador utiliza el archivo versionado en `web/data/`. Para cambiar
+permanentemente el Excel incluido, reemplázalo allí y vuelve a publicar. El Excel que el
 visitante selecciona sólo reemplaza su caso en esa pestaña.
 
 ## Estructura del proyecto
@@ -45,7 +45,7 @@ visitante selecciona sólo reemplaza su caso en esa pestaña.
 | `web/` | Adaptador, worker y controles de la edición de navegador |
 | `static/` | Interfaz compartida con la edición local |
 | `app/` | Reglas, lectura del Excel, PDF y API local opcional |
-| `scripts/` | Generación del ejemplo y de la web publicable |
+| `scripts/` | Generación de la web publicable y utilidades de prueba |
 | `docs/` | Web estática generada y documentación |
 | `tests/` | Pruebas del análisis y exportaciones |
 | `.github/workflows/` | Verificación y publicación automática |
@@ -145,7 +145,7 @@ con un runtime real; el validador y los fallos de configuración tienen pruebas.
 ## Arquitectura y reglas
 
 En GitHub Pages, el navegador ejecuta las reglas Python mediante Pyodide en un
-Web Worker. El ejemplo está precalculado para mostrar el dashboard de inmediato.
+Web Worker. El archivo incluido está precalculado para mostrar el dashboard de inmediato.
 PDF, cambios de Excel y selección opcional con Ollama utilizan el mismo motor.
 El esquema siguiente corresponde a la edición local opcional:
 
@@ -171,7 +171,8 @@ correlaciones; `app/ingest.py`, normalización; `app/report.py`, PDF;
 
 ## Privacidad y uso local
 
-En Pages sólo se publica el ejemplo sintético. Los Excel del visitante se
+En Pages se publica el Excel del proyecto y su análisis, con autorización del
+autor. Ambos son accesibles públicamente. Los Excel del visitante se
 procesan en la memoria de su pestaña y no modifican el repositorio. El motor y
 sus dependencias se descargan de CDN; al usar Ollama se envía la selección de
 hallazgos a la instalación local que el visitante conecta explícitamente.
@@ -212,6 +213,6 @@ las capturas y entregables se guardan en `artifacts/`.
 El video, de hasta cinco minutos, lo graba el autor. El PDF se genera desde la
 aplicación; los artefactos de una investigación nunca se publican por defecto.
 `.gitignore` excluye `.devin/` completo, Excel, PDF, artefactos, secretos y entornos;
-la única excepción de Excel es `docs/data/demo-sintetica.xlsx`, generado con datos
-sintéticos para la web.
+las excepciones de Excel son las copias autorizadas del archivo del proyecto en
+`web/data/` y `docs/data/`, publicadas intencionadamente para la web.
 Las skills y el material de los cursos no forman parte del código publicable.

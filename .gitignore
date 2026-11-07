@@ -9,7 +9,8 @@ __pycache__/
 artifacts/*
 !artifacts/.gitkeep
 *.xlsx
-!docs/data/demo-sintetica.xlsx
+!docs/data/SOC_L2_Logs_Ampliados_Multiples_Incidentes.xlsx
+!web/data/SOC_L2_Logs_Ampliados_Multiples_Incidentes.xlsx
 *.pdf
 *.log
 .coverage

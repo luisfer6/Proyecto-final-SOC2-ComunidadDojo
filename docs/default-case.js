@@ -1,5 +1,5 @@
 "use strict";
-// This script runs after app.js. Only the bundled synthetic workbook is public.
+// This script runs after app.js. The bundled project workbook is public.
 async function loadDefaultCase() {
   if (state.busy) return;
   state.busy = true;
@@ -13,15 +13,15 @@ async function loadDefaultCase() {
     state.page = 0; state.hour = null;
     $("#finding-search").value = ""; $("#event-search").value = "";
     renderCase(); showView('overview');
-    notice('Ejemplo sintético cargado. Explora los resultados o cambia el Excel para investigar tus propios datos.');
+    notice(`Excel del proyecto cargado: ${number(result.metadata.rows)} registros disponibles. Explora el análisis o selecciona otro Excel.`);
   } catch (error) { notice(error.message, true); }
   finally { state.busy = false; button.disabled = false; $("#file-input").disabled = false; }
 }
 $("#restore-default").addEventListener('click', loadDefaultCase);
 const sourceObserver = new MutationObserver(() => {
-  const demo = state.data?.id === 'bundled-demo';
-  $("#dataset-status").textContent = demo ? 'EJEMPLO SINTÉTICO' : 'EXCEL PERSONALIZADO';
-  $("#dataset-status").classList.toggle('custom-dataset', !demo);
+  const included = state.data?.id === 'bundled-case';
+  $("#dataset-status").textContent = included ? 'EXCEL DEL PROYECTO' : 'EXCEL PERSONALIZADO';
+  $("#dataset-status").classList.toggle('custom-dataset', !included);
 });
 sourceObserver.observe($("#case-filename"), {childList:true});
 for (const key of ['analyst','client','company','reference']) {
