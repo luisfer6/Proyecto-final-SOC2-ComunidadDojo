@@ -1,6 +1,6 @@
 # SOC Lens
 
-Aplicación web para investigar exportaciones SIEM en Excel. Detecta patrones
+Aplicación web para investigar exportaciones SIEM en Excel o CSV. Detecta patrones
 de autenticación, privilegios, comandos, administración remota, actividad web,
 persistencia y transferencias; conserva la evidencia de cada hallazgo y genera
 un informe PDF con resumen ejecutivo y anexo técnico.
@@ -15,7 +15,7 @@ como hipótesis con claves, ventana y limitaciones explícitas.
 
 Pulsa **Usar Excel del reto** para cargar
 `SOC_L2_Logs_Ampliados_Multiples_Incidentes.xlsx`, incluido en el repositorio.
-También puedes arrastrar un Excel propio o hacer clic en la zona de carga. Puedes editar
+También puedes arrastrar un Excel o CSV propio o hacer clic en la zona de carga. Puedes editar
 analista, cliente, consultora y referencia y descargar un resumen técnico PDF de 4 páginas para el reto, además del JSON
 con toda la evidencia. El resumen contiene alcance, catálogo de hallazgos, tres
 prioridades técnicas, cronología, observables y plan de acción.
@@ -83,7 +83,14 @@ En Linux/macOS, usa `.venv/bin/python`. Esos sistemas no fueron validados en est
 entrega; `requirements.txt` define los rangos y `requirements.lock.txt` las versiones
 del entorno probado.
 
-## Excel admitido
+## Excel y CSV admitidos
+
+Se admiten `.xlsx` y `.csv`. Los CSV deben usar UTF-8 (con o sin BOM) o UTF-16
+con BOM y separadores de coma, punto y coma, tabulador o barra vertical.
+Usan las mismas cabeceras y límites de filas, columnas y celdas que Excel;
+se conservan los valores originales como texto, incluidos comandos que empiecen por `=`.
+El límite de tamaño para CSV es 10 MB.
+
 
 Primera fila: cabeceras únicas. Se procesan todas las hojas compatibles; las hojas
 omitidas se declaran en calidad/cobertura. Máximos: 10 MB comprimidos, 60 MB

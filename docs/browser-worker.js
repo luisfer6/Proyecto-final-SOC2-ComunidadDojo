@@ -12,7 +12,7 @@ async function engine() {
     await py.runPythonAsync("import micropip\nawait micropip.install(['openpyxl==3.1.5', 'defusedxml==0.7.1', 'reportlab==4.4.9'])");
     py.FS.mkdirTree('/soc/app');
     for (const name of ['__init__','analysis','ingest','report','selection']) {
-      const response = await fetch(`./python/${name}.py?v=d17aeba0445b`);
+      const response = await fetch(`./python/${name}.py?v=ccc9e18b37d3`);
       if (!response.ok) throw new Error('No se pudo descargar el motor de análisis. Revisa tu conexión y vuelve a cargar la página.');
       py.FS.writeFile(`/soc/app/${name}.py`, await response.text());
     }
@@ -29,13 +29,13 @@ async function handle({id, action, data}) {
     let result;
     if (action === 'analyze') {
       postMessage({progress:'Analizando en tu navegador: validación, reglas y modelo estadístico…'});
-      py.FS.writeFile('/upload.xlsx', new Uint8Array(data.bytes));
+      py.FS.writeFile('/upload.data', new Uint8Array(data.bytes));
       py.globals.set('filename', data.filename);
       py.globals.set('offset_json', JSON.stringify(data.offset));
       py.globals.set('case_id', data.caseId);
       try {
-        result = JSON.parse(await py.runPythonAsync("with open('/upload.xlsx', 'rb') as workbook:\n    events, metadata = read_workbook(workbook.read(), filename, json.loads(offset_json))\ncandidate = analyze(events, metadata)\ncandidate['id'] = case_id\ncase = candidate\ndel candidate, events, metadata\njson.dumps(case, ensure_ascii=False)"));
-      } finally { py.FS.unlink('/upload.xlsx'); }
+        result = JSON.parse(await py.runPythonAsync("with open('/upload.data', 'rb') as workbook:\n    events, metadata = read_workbook(workbook.read(), filename, json.loads(offset_json))\ncandidate = analyze(events, metadata)\ncandidate['id'] = case_id\ncase = candidate\ndel candidate, events, metadata\njson.dumps(case, ensure_ascii=False)"));
+      } finally { py.FS.unlink('/upload.data'); }
     } else if (action === 'restore') {
       py.globals.set('case_json', JSON.stringify(data.case));
       await py.runPythonAsync('case = json.loads(case_json)\ndel case_json');

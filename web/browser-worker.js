@@ -29,13 +29,13 @@ async function handle({id, action, data}) {
     let result;
     if (action === 'analyze') {
       postMessage({progress:'Analizando en tu navegador: validación, reglas y modelo estadístico…'});
-      py.FS.writeFile('/upload.xlsx', new Uint8Array(data.bytes));
+      py.FS.writeFile('/upload.data', new Uint8Array(data.bytes));
       py.globals.set('filename', data.filename);
       py.globals.set('offset_json', JSON.stringify(data.offset));
       py.globals.set('case_id', data.caseId);
       try {
-        result = JSON.parse(await py.runPythonAsync("with open('/upload.xlsx', 'rb') as workbook:\n    events, metadata = read_workbook(workbook.read(), filename, json.loads(offset_json))\ncandidate = analyze(events, metadata)\ncandidate['id'] = case_id\ncase = candidate\ndel candidate, events, metadata\njson.dumps(case, ensure_ascii=False)"));
-      } finally { py.FS.unlink('/upload.xlsx'); }
+        result = JSON.parse(await py.runPythonAsync("with open('/upload.data', 'rb') as workbook:\n    events, metadata = read_workbook(workbook.read(), filename, json.loads(offset_json))\ncandidate = analyze(events, metadata)\ncandidate['id'] = case_id\ncase = candidate\ndel candidate, events, metadata\njson.dumps(case, ensure_ascii=False)"));
+      } finally { py.FS.unlink('/upload.data'); }
     } else if (action === 'restore') {
       py.globals.set('case_json', JSON.stringify(data.case));
       await py.runPythonAsync('case = json.loads(case_json)\ndel case_json');

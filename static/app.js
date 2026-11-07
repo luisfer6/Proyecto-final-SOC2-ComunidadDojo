@@ -4,7 +4,7 @@ const state = {data:null, view:"overview", severity:"Todos", findingQuery:"", ev
 const titles = {
   overview:["Resumen de la investigación","Una vista de la evidencia y las señales que merecen tu atención."],
   findings:["Hallazgos con fundamento.","Revisa qué ocurrió, por qué importa y qué falta por validar."],
-  events:["Explora la evidencia.","Cada evento conserva sus campos originales y su ubicación en el Excel."],
+  events:["Explora la evidencia.","Cada evento conserva sus campos originales y su ubicación en el archivo."],
   correlations:["Conecta las señales.","Asociaciones explícitas para orientar la investigación, sin asumir causalidad."],
   report:["Del análisis al informe.","Un documento trazable para el equipo técnico y la dirección."],
 };
@@ -18,7 +18,7 @@ function notice(message, error=false) {
 }
 function showView(view) {
   if (!state.data) {
-    notice("Selecciona un Excel para comenzar la investigación.");
+    notice("Selecciona un Excel o CSV para comenzar la investigación.");
     $("#file-input").focus();
     return;
   }
@@ -56,7 +56,7 @@ async function api(url, options={}) {
 }
 async function upload(file) {
   if(!file || state.busy) return;
-  if(!file.name.toLowerCase().endsWith(".xlsx")) return notice("Selecciona un archivo Excel .xlsx.",true);
+  if(!/\.(xlsx|csv)$/i.test(file.name)) return notice("Selecciona un archivo Excel .xlsx o CSV .csv.",true);
   if(file.size>10*1024*1024) return notice("El archivo supera el máximo de 10 MB.",true);
   state.busy=true;
   $("#loading").classList.remove("hidden");

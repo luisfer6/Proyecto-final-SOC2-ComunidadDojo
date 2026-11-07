@@ -7,9 +7,9 @@
   <title>SOC Lens · Investigación con evidencia</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%230e9988'/%3E%3Cpath d='M20 7l11 4v10c0 7-11 13-11 13S9 28 9 21V11z' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./styles.css?v=68e2b69ae0e7">
-  <script src="./browser.js?v=1b81014cf47d" defer></script>
-  <script src="./app.js?v=23b6e9bf3d51" defer></script>
-  <script src="./default-case.js?v=d3519ec715d4" defer></script>
+  <script src="./browser.js?v=a4804fd7b226" defer></script>
+  <script src="./app.js?v=05a9bacbab68" defer></script>
+  <script src="./default-case.js?v=37aadf56b66d" defer></script>
 </head>
 <body>
   <a href="#main" class="skip-link">Saltar al contenido</a>
@@ -25,7 +25,7 @@
     </nav>
     <div class="sidebar-bottom">
       <div class="privacy-icon">⌾</div><strong>Tu evidencia, en tu navegador</strong>
-      <p>El Excel se procesa en esta pestaña. Sus datos no se envían al alojamiento.</p>
+      <p>El archivo se procesa en esta pestaña. Sus datos no se envían al alojamiento.</p>
       <div class="analyst"><span class="avatar">L2</span><div>Analista SOC<small>Proyecto final · Comunidad Dojo</small></div></div>
     </div>
   </aside>
@@ -44,19 +44,19 @@
       <section class="dataset-intro panel"><div><span class="eyebrow">LABORATORIO DE INVESTIGACIÓN</span><h2>Explora. Investiga. Documenta.</h2><p>Un caso listo para explorar y tus propios datos cuando los necesites.</p></div><span class="pill local">100% estático · Sin servidor de análisis</span></section>
       <section id="upload-section" class="upload-card">
         <div id="dropzone" class="dropzone">
-          <button id="choose-excel" class="upload-choose" type="button" aria-label="Elegir archivo Excel">
+          <button id="choose-excel" class="upload-choose" type="button" aria-label="Elegir archivo Excel o CSV">
             <span class="upload-icon" aria-hidden="true">↥</span>
-            <span><strong>Arrastra aquí el archivo .xlsx</strong> o haz clic para seleccionarlo</span>
-            <small>XLSX · Hasta 10 MB · Todas las hojas compatibles · Procesamiento en tu navegador</small>
+            <span><strong>Arrastra aquí el archivo .xlsx o .csv</strong> o haz clic para seleccionarlo</span>
+            <small>XLSX / CSV · Hasta 10 MB · Todas las hojas compatibles · Procesamiento en tu navegador</small>
           </button>
-          <input id="file-input" type="file" accept=".xlsx" aria-label="Seleccionar archivo Excel" hidden>
+          <input id="file-input" type="file" accept=".xlsx,.csv" aria-label="Seleccionar archivo Excel o CSV" hidden>
           <button id="restore-default" class="button secondary" type="button">Usar Excel del reto</button>
         </div>
         <div class="dataset-actions"><span id="dataset-status" class="dataset-badge">EXCEL DEL RETO DISPONIBLE</span><a href="./data/SOC_L2_Logs_Ampliados_Multiples_Incidentes.xlsx" download class="text-button">↓ Descargar Excel incluido</a></div><details class="case-settings" open><summary>Datos del caso <span>Se incluyen en el PDF y JSON</span></summary><div class="case-fields"><label for="case-analyst">Analista<input id="case-analyst" maxlength="120" value="Analista SOC L2" autocomplete="off"></label><label for="case-client">Cliente<input id="case-client" maxlength="120" value="Cliente corporativo (CORP)" autocomplete="off"></label><label for="case-company">Consultora<input id="case-company" maxlength="120" value="Comunidad Dojo" autocomplete="off"></label><label for="case-reference">Referencia<input id="case-reference" maxlength="120" placeholder="Ej. SOC-2026-001" autocomplete="off"></label></div><p class="fine-print">Los cambios se conservan durante esta sesión. Al recargar puedes volver a elegir el Excel del reto o un archivo propio.</p></details><div class="upload-options"><label for="timezone">Zona de las fechas sin desfase</label><select id="timezone"><option value="">No declarada · conservar hora original</option><option value="0">UTC (confirmado por el analista)</option><option value="60">UTC+01:00</option><option value="120">UTC+02:00</option><option value="-180">UTC−03:00</option><option value="-240">UTC−04:00</option><option value="-300">UTC−05:00</option><option value="-360">UTC−06:00</option></select><span>No se deduce por la ubicación del cliente.</span></div>
       </section>
 
       <section id="loading" class="loading hidden" aria-live="polite"><span class="spinner"></span><div><strong>Investigando tu evidencia…</strong><p>Validando filas, aplicando reglas y entrenando el modelo local.</p></div></section>
-      <p class="fine-print">Pulsa «Usar Excel del reto» para cargar el archivo incluido. Para analizar otro Excel o generar un PDF se descarga el motor y sus dependencias. El Excel se procesa en esta pestaña. <a href="./guia-ollama.html" target="_blank" rel="noopener">Cómo conectar Ollama local</a>.</p>
+      <p class="fine-print">Pulsa «Usar Excel del reto» para cargar el archivo incluido. Para analizar otro Excel o CSV o generar un PDF se descarga el motor y sus dependencias. El archivo se procesa en esta pestaña. <a href="./guia-ollama.html" target="_blank" rel="noopener">Cómo conectar Ollama local</a>.</p>
       <section id="empty-state" class="welcome-grid">
         <article class="welcome-card"><span class="step">01 / EXPLORA</span><h3>Una fila, una referencia.</h3><p>Consulta el evento original, su hoja y su número de fila. Cada hallazgo conserva un vínculo con la evidencia.</p><div class="mini-log"><span>Evento → Señal → Hipótesis</span><span>Revisión humana → Decisión</span></div></article>
         <article class="welcome-card"><span class="step">02 / INVESTIGA</span><h3>Contexto antes que conclusiones.</h3><p>Fuerza bruta, privilegios, comandos, movimiento lateral y otras señales. Con criticidad, alternativas y validaciones.</p><div class="mini-tags"><span>Reglas explicables</span><span>IA local</span></div></article>
