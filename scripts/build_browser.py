@@ -4,6 +4,7 @@ import shutil
 import json
 import sys
 import argparse
+import hashlib
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -52,4 +53,13 @@ with (OUT / 'styles.css').open('a', encoding='utf-8') as css:
     css.write((ROOT / 'web' / 'browser.css').read_text(encoding='utf-8'))
 with (OUT / 'styles.css').open('a',encoding='utf-8') as css:
     css.write('\n.ollama-connect{margin:18px 0}.ollama-connect label{display:block;font-size:1rem}.ollama-connect input{width:100%;padding:10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);margin:8px 0 12px}\n')
+# Different datasets and application versions must not reuse a previous Pages cache.
+revision = hashlib.sha256((data_dir / 'default-case.json').read_bytes()).hexdigest()[:12]
+browser_path = OUT / 'browser.js'
+browser_path.write_text(browser_path.read_text(encoding='utf-8').replace(
+    './data/default-case.json', f'./data/default-case.json?v={revision}'), encoding='utf-8')
+for asset in ('styles.css', 'browser.js', 'app.js', 'default-case.js'):
+    revision = hashlib.sha256((OUT / asset).read_bytes()).hexdigest()[:12]
+    html = html.replace(f'"./{asset}"', f'"./{asset}?v={revision}"')
+(OUT / 'index.html').write_text(html, encoding='utf-8')
 print(f'Edición navegador generada en {OUT}')
