@@ -6,7 +6,7 @@
   const response = value => new Response(JSON.stringify(value), {headers:{'Content-Type':'application/json'}});
   function workerCall(action, data = {}) {
     if (!worker) {
-      worker = new Worker('./browser-worker.js');
+      worker = new Worker('./browser-worker.js?v=d17aeba0445b');
       worker.onmessage = ({data:message}) => {
         if (message.progress) { document.querySelector('#loading p').textContent = message.progress; return; }
         const job = pending.get(message.id);
@@ -42,7 +42,7 @@
     async api(url, options = {}) {
       if (url === '/api/health') return response({status:'ok',...ollama});
       if (url === '/api/default') {
-        const res = await fetch('./data/default-case.json?v=f0429c2d2455', {cache:'no-store'});
+        const res = await fetch('./data/default-case.json?v=5a27faf302de', {cache:'no-store'});
         if (!res.ok) throw new Error('No se pudo abrir el Excel del proyecto. Puedes seleccionar otro Excel.');
         currentData = await res.json();
         currentCase = currentData.id;

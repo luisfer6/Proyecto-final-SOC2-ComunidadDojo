@@ -50,261 +50,157 @@ def get_severity_color(severity):
 
 
 def make_pdf(result):
+    """Resumen técnico: alcance, catálogo, prioridades y respuesta; evidencia completa en JSON."""
+    from reportlab.platypus import KeepTogether
+
     output = BytesIO()
     styles = getSampleStyleSheet()
-
-    for name in ("Normal", "Title", "Heading1", "Heading2", "Heading3"):
+    for name in ('Normal', 'Title', 'Heading1', 'Heading2', 'Heading3'):
         styles[name].fontName = FONT
-        if name.startswith("Heading"):
-            styles[name].textColor = COLOR_HEADER_BG
-            styles[name].keepWithNext = True
-
-    styles["Normal"].fontSize = 9
-    styles["Normal"].leading = 12
-    styles["Normal"].spaceAfter = 6
-
-    styles.add(ParagraphStyle("CoverTitle", fontName=FONT, fontSize=16, leading=20, textColor=COLOR_HEADER_BG, spaceAfter=15, keepWithNext=True))
-    styles.add(ParagraphStyle("CoverSubtitle", fontName=FONT, fontSize=12, leading=15, textColor=colors.gray, spaceAfter=20, keepWithNext=True))
-    styles.add(ParagraphStyle("TableText", fontName=FONT, fontSize=8, leading=10, wordWrap="CJK"))
-    styles.add(ParagraphStyle("TableTextBold", fontName=FONT, fontSize=8, leading=10, wordWrap="CJK", textColor=colors.black))
-
+        styles[name].textColor = COLOR_HEADER_BG
+    styles['Normal'].fontSize = 9
+    styles['Normal'].leading = 12
+    styles['Normal'].spaceAfter = 6
+    styles['Heading1'].fontSize = 15
+    styles['Heading1'].leading = 19
+    styles['Heading1'].spaceBefore = 10
+    styles['Heading1'].spaceAfter = 8
+    styles['Heading2'].fontSize = 11
+    styles['Heading2'].leading = 14
+    styles['Heading2'].spaceBefore = 10
+    styles.add(ParagraphStyle('Cell', fontName=FONT, fontSize=8, leading=10, textColor=COLOR_HEADER_BG))
+    styles.add(ParagraphStyle('HeadCell', parent=styles['Cell'], textColor=colors.white))
+    styles.add(ParagraphStyle('Small', parent=styles['Normal'], fontSize=8, leading=10, textColor=colors.HexColor('#54647e')))
     story = []
+    meta, summary = result['metadata'], result['summary']
+    context = meta.get('case_context', {})
+    findings = result.get('findings', [])
+    event_map = {e['ref']: e for e in result.get('events', [])}
 
-    def p(value, style="Normal"):
-        if value is None: value = ""
-        value = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "\ufffd", str(value))
-        return Paragraph(escape(value).replace("\n", "<br/>").replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>"), styles[style])
+    def clean(value):
+        return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', ' ', str('' if value is None else value))
 
-    def add(value, style="Normal"):
+    def short(value, limit=130):
+        text = clean(value)
+        return text if len(text) <= limit else text[:limit - 3] + '...'
+
+    def p(value, style='Normal'):
+        return Paragraph(escape(clean(value)).replace('\n', '<br/>'), styles[style])
+
+    def add(value, style='Normal'):
         story.append(p(value, style))
 
-    def make_table(rows, widths, is_header_dark=True):
-        cells = []
-        for i, row in enumerate(rows):
-            cell_row = []
-            for cell in row:
-                if isinstance(cell, Paragraph):
-                    cell_row.append(cell)
-                else:
-                    style = "TableTextBold" if (i == 0 and is_header_dark) else "TableText"
-                    # Forzar negrita si la celda incluye HTML bold manual en la primera columna o filas clave
-                    if "<b>" in str(cell): style = "TableTextBold"
-                    cell_row.append(p(cell, style))
-            cells.append(cell_row)
-
-        t = Table(cells, colWidths=widths, repeatRows=1, hAlign="LEFT")
-
-        ts = [
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("INNERGRID", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
-            ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ]
-
-        if is_header_dark:
-            ts.extend([
-                ("BACKGROUND", (0, 0), (-1, 0), COLOR_HEADER_BG),
-                ("TEXTCOLOR", (0, 0), (-1, 0), COLOR_HEADER_TEXT),
-            ])
-            # Forzar color de texto blanco en la cabecera para los Párrafos
-            for col in range(len(widths)):
-                cells[0][col].style.textColor = colors.white
-
-        # Alternar colores de fila
-        for i in range(1, len(rows)):
-            if i % 2 == 0:
-                ts.append(("BACKGROUND", (0, i), (-1, i), COLOR_ROW_ALT))
-
-        t.setStyle(TableStyle(ts))
+    def table(rows, widths, dense=False):
+        cells = [[p(v, 'HeadCell' if i == 0 else 'Cell') for v in row] for i, row in enumerate(rows)]
+        t = Table(cells, colWidths=[w * mm for w in widths], repeatRows=1, hAlign='LEFT')
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), COLOR_HEADER_BG),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F3F5F8')]),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6), ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 2 if dense else 5), ('BOTTOMPADDING', (0, 0), (-1, -1), 2 if dense else 5),
+            ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#FF7A45')),
+        ]))
         story.append(t)
-        story.append(Spacer(1, 8))
+        story.append(Spacer(1, 7))
 
-    m = result["metadata"]
-    context = m.get("case_context", {})
+    # 1. Compact identification instead of a separate cover.
+    add('SOC LENS / BOOTCAMP ANALISTA SOC NIVEL 2', 'Small')
+    add('Informe técnico de seguridad', 'Title')
+    add('Resumen técnico - borrador para revisión del analista', 'Small')
+    table([
+        ['Datos del caso', 'Identificación'],
+        ['Cliente / Analista', f"{context.get('client') or 'Cliente corporativo (CORP)'} / {context.get('analyst') or 'Analista SOC L2'}"],
+        ['Consultora / Referencia', f"{context.get('company') or 'No indicada'} / {context.get('reference') or 'Sin referencia'}"],
+        ['Archivo / Fecha', f"{meta['filename']} / {result['generated_at'][:10]}"],
+    ], [39, 139])
+    add('1. Resumen ejecutivo', 'Heading1')
+    add(f"Se analizaron {summary['events']} eventos únicos de {summary['hosts']} equipos y {summary['users']} cuentas. "
+        f"Se identificaron {summary['findings']} hallazgos y {summary['flagged_events']} eventos con señal, "
+        f"con {summary['hypotheses']} asociaciones contextuales para investigar.")
+    add('Conclusión técnica: existen señales que requieren validación. No se confirma automáticamente ningún incidente, compromiso de cuenta ni ejecución exitosa de un comando.')
+    table([['Crítico', 'Alto', 'Medio', 'Bajo'], [str(summary['severity'].get(s, 0)) for s in ('Crítico', 'Alto', 'Medio', 'Bajo')]], [44.5] * 4)
+    add('Prioridad inmediata: preservar los registros de los hallazgos críticos y altos, confirmar la actividad con los responsables y verificar el resultado real antes de contener.', 'Normal')
+    add('2. Alcance y metodología', 'Heading1')
+    dated = sorted(e['timestamp'] for e in result.get('events', []) if e.get('timestamp'))
+    add(f"Periodo: {dated[0] if dated else 'No disponible'} - {dated[-1] if dated else 'No disponible'}. Se conserva la hora y el dominio temporal del registro.")
+    add('Fuente: exportación SIEM en Excel. Detección mediante reglas explicables y priorización estadística con Isolation Forest cuando hay datos suficientes. Las correlaciones son hipótesis contextuales y no demuestran causalidad.')
+    add('La criticidad expresa prioridad de revisión. Faltan validación humana, contexto de negocio y claves completas de sesión/proceso para confirmar impacto. Las IP de documentación no se atribuyen a actores reales.')
+    add(f"SHA-256 del archivo original: {meta['sha256']}", 'Small')
 
-    # ------------------ PORTADA / ENCABEZADO ------------------
-    add("BOOTCAMP ANALISTA SOC NIVEL 2", "CoverSubtitle")
-    add("Informe técnico de investigación de incidentes de seguridad", "CoverTitle")
-
-    meta_table = [
-        ["Cliente", context.get("client") or "Cliente corporativo (CORP)"],
-        ["Elaborado por", context.get("analyst") or "Analista SOC L2 (Generado por Motor)"],
-        ["Consultora", context.get("company") or "No indicada"],
-        ["Referencia", context.get("reference") or "No indicada"],
-        ["Archivo analizado", m['filename']],
-        ["Periodo analizado", f"{result['timeline'][0]['clock']} - {result['timeline'][-1]['clock']}" if result.get("timeline") else "N/D"],
-        ["Fecha del informe", result['generated_at']],
-        ["Clasificación", "CONFIDENCIAL - uso exclusivo del cliente"]
-    ]
-    make_table(meta_table, [45*mm, 125*mm], is_header_dark=False)
-    add(f"SHA-256 del archivo original: {m['sha256']}")
-    story.append(Spacer(1, 10))
-
-    # ------------------ 1. RESUMEN EJECUTIVO ------------------
-    add("1. Resumen ejecutivo", "Heading1")
-    add(f"Se analizaron {m.get('rows', 0)} eventos exportados correspondientes al archivo provisto. El motor de análisis correlacionó los eventos sospechosos en {len(result.get('findings', []))} hallazgos estructurados.")
-    for fact in result["narrative"]["facts"]:
-        add(f"• {fact}")
-    add(result["narrative"]["review"])
-
-    # Conteo rápido de criticidades
-    crit_counts = {"Crítico": 0, "Alto": 0, "Medio": 0, "Bajo": 0}
-    for f in result.get("findings", []):
-        sev = f.get("severity", "Informativo").capitalize()
-        if sev in crit_counts: crit_counts[sev] += 1
-
-    resumen_crit = f"<b>Severidades identificadas:</b> {crit_counts['Crítico']} Crítico(s), {crit_counts['Alto']} Alto(s), {crit_counts['Medio']} Medio(s)."
-    add(resumen_crit)
-
-    # ------------------ 2. ALCANCE Y METODOLOGÍA ------------------
-    add("2. Alcance y metodología", "Heading1")
-    add("El procesamiento se realizó mediante análisis de heurística y reglas correlacionales. Las reglas evalúan proveedor, Event_ID y campos concretos (fuerza bruta, éxito posterior, acceso a objetos masivos, transferencias).")
-
-    metodologia_table = [
-        ["Criticidad", "Criterio aplicado", "Tiempo de respuesta"],
-        ["Crítico", "Impacto confirmado o inminente: exfiltración, destrucción de copias, ejecución remota, compromiso lateral.", "Inmediato (< 1 h)"],
-        ["Alto", "Actividad maliciosa clara (persistencia, privilegios, ataque dirigido) sin impacto confirmado.", "< 4 h"],
-        ["Medio", "Anomalía o intento sin éxito; requiere verificación.", "< 24 h"],
-        ["Bajo", "Informativo o de higiene de seguridad.", "Planificado"]
-    ]
-    make_table(metodologia_table, [30*mm, 100*mm, 40*mm])
-
-    # ------------------ 3. HALLAZGOS IDENTIFICADOS ------------------
-    add("3. Hallazgos identificados", "Heading1")
-    if not result.get("findings"):
-        add("Ninguna regla produjo hallazgos. Esto no demuestra ausencia de actividad maliciosa.")
-    else:
-        hallazgos_table = [["ID", "Hallazgo", "Criticidad", "Ventana", "Activos/Cuentas"]]
-        for f in result["findings"]:
-            activos = f"{', '.join(f.get('hosts', []))} / {', '.join(f.get('users', []))}"
-            ventana = f"{f.get('start', 'N/D').split(' ')[-1]} - {f.get('end', 'N/D').split(' ')[-1]}" # Solo la hora para acortar
-            hallazgos_table.append([f['id'], f['title'], f['severity'].upper(), ventana, activos[:50]])
-        make_table(hallazgos_table, [20*mm, 60*mm, 25*mm, 25*mm, 40*mm])
-
-    # ------------------ 4. DETALLE TÉCNICO DE CADA HALLAZGO ------------------
-    add("4. Detalle técnico de cada hallazgo", "Heading1")
-
-    # Mapa de eventos para extracción rápida
-    event_map = {e["ref"]: e for e in result.get("events", [])}
-
-    for f in result.get("findings", []):
-        add(f"{f['id']} - {f['title']}", "Heading2")
-
-        # Tabla resumen del hallazgo
-        f_meta = [
-            ["Criticidad", f"<b><font color='{get_severity_color(f['severity']).hexval()}'>{f['severity'].upper()}</font></b>"],
-            ["Ventana", f"{f.get('start', 'N/D')} - {f.get('end', 'N/D')}"],
-            ["Equipos", ", ".join(f.get('hosts', [])) or "N/D"],
-            ["Cuentas", ", ".join(f.get('users', [])) or "N/D"],
-            ["Regla Asociada", f.get('rule', 'N/D')],
-            ["Eventos asociados", str(len(f.get('evidence', [])))]
-        ]
-        make_table(f_meta, [40*mm, 130*mm], is_header_dark=False)
-
-        add("EXPLICACIÓN TÉCNICA", "Heading3")
-        add(f"<b>Observación:</b> {f.get('observation', 'N/D')}")
-        add(f"<b>Justificación:</b> {f.get('rationale', 'N/D')}")
-        add(f"<b>Alternativa legítima:</b> {f.get('alternative', 'N/D')}")
-
-        add("EVIDENCIAS EN LOS LOGS", "Heading3")
-        ev_table = [["Ref", "Hora", "Equipo / Hoja", "Evento / ID", "Usuario", "Detalle Clave"]]
-
-        for ref in f.get("evidence", [])[:10]: # Limitar a 10 para no desbordar el PDF por cada hallazgo
-            if ref in event_map:
-                ev = event_map[ref]
-                raw = ev.get("raw", {})
-
-                # Extracción heurística de campos comunes de SIEM
-                hora = ev.get("clock", ev.get("utc", ""))
-                equipo = raw.get("Computer", raw.get("DestinationHostname", ev.get("sheet", "N/D")))
-                evento = raw.get("EventID", ev.get("log_id", "N/D"))
-                usuario = raw.get("TargetUserName", raw.get("SubjectUserName", raw.get("SourceUserName", "N/D")))
-
-                # Resumir el payload descartando llaves vacías
-                detalle = ", ".join([f"{k}:{v}" for k, v in raw.items() if v and k not in ["Computer", "EventID", "TargetUserName", "SubjectUserName"]])
-                detalle_truncado = detalle[:90] + "..." if len(detalle) > 90 else detalle
-
-                ev_table.append([ref, str(hora)[:19], str(equipo), str(evento), str(usuario), detalle_truncado])
-
-        if len(f.get("evidence", [])) > 10:
-            ev_table.append(["...", "...", "...", "...", "...", f"(+ {len(f['evidence']) - 10} eventos similares de la misma alerta)"])
-
-        make_table(ev_table, [15*mm, 25*mm, 30*mm, 25*mm, 25*mm, 50*mm])
-
-        add("CRITICIDAD Y JUSTIFICACIÓN / IMPACTO", "Heading3")
-        add(f.get('impact', 'No documentado.'))
-
-        add("PLAN DE ACCIÓN SUGERIDO", "Heading3")
-        action_table = [
-            ["INVESTIGAR (Validación)", "CONTENER / REMEDIAR (Acción)"],
-            [f.get('validation', 'N/D'), f.get('action', 'N/D')]
-        ]
-        make_table(action_table, [85*mm, 85*mm])
-        story.append(Spacer(1, 15))
-
-    # ------------------ 5. LÍNEA DE TIEMPO CONSOLIDADA ------------------
+    # 2. All findings for the challenge workbook; cap only unusually large cases.
     story.append(PageBreak())
-    add("5. Línea de tiempo consolidada", "Heading1")
-    if result.get("timeline"):
-        tl_table = [["Hora / Dominio", "Eventos únicos", "Eventos Flaggeados (Regla)"]]
-        for t in result["timeline"]:
-            tl_table.append([f"{t['hour']} · {t['clock']}", str(t["events"]), str(t["flagged"])])
-        make_table(tl_table, [70*mm, 50*mm, 50*mm])
-    else:
-        add("No hay línea de tiempo disponible.")
+    add('3. Hallazgos identificados', 'Heading1')
+    limit = 30
+    add(f"Catálogo de {min(len(findings), limit)} de {len(findings)} hallazgos, ordenado por prioridad. Referencias completas y campos originales disponibles en el JSON.", 'Small')
+    rows = [['ID', 'Hallazgo', 'Equipos', 'Criticidad', 'Evidencias']]
+    for f in findings[:limit]:
+        rows.append([f['id'], short(f['title'], 88), short(', '.join(f['hosts']), 38), f['severity'],
+                     f"{len(f['evidence'])} filas\n{f['evidence'][0] if f['evidence'] else '-'}"])
+    if not findings:
+        rows.append(['-', 'Sin coincidencias con las reglas actuales', '-', '-', '0'])
+    table(rows, [15, 76, 32, 22, 33], dense=True)
+    add('Los títulos y equipos se abrevian en esta tabla. El detalle íntegro de todos los hallazgos se conserva en el dashboard y JSON.', 'Small')
 
-    # ------------------ 6. OBSERVABLES / IoC ------------------
-    add("6. Indicadores de compromiso y Observables (IoC)", "Heading1")
-    add("Inventario de entidades extraídas. La aparición en registros no convierte automáticamente una IP en maliciosa; requiere validación externa de reputación.")
-    if result.get("observables"):
-        ioc_table = [["Valor (IP / Entidad)", "Clasificación", "Apariciones"]]
-        for o in result["observables"]:
-            ioc_table.append([str(o["value"]), str(o["kind"]), str(o["count"])])
-        make_table(ioc_table, [70*mm, 70*mm, 30*mm])
-    else:
-        add("No se extrajeron observables.")
-
-    # ------------------ 7. RECOMENDACIONES GENERALES ------------------
-    add("7. Recomendaciones generales de seguridad", "Heading1")
-    recomendaciones = [
-        "Autenticación multifactor (MFA) obligatoria para VPN, RDP, correo y cuentas privilegiadas.",
-        "Políticas de bloqueo de cuenta y detección de password spraying en el SIEM.",
-        "Gestión de cuentas privilegiadas: modelo por niveles (tiering), cuentas admin nominativas separadas del uso habitual.",
-        "Protección de Endpoints: EDR activo, bloqueo de ejecución desde carpetas temporales y restricción de PowerShell (Constrained Language Mode).",
-        "Segmentación de red: restringir RDP/SMB directo entre estaciones de trabajo y servidores; habilitar únicamente flujos justificados."
-    ]
-    for r in recomendaciones:
-        add(f"• {r}")
-
-    story.append(Spacer(1, 15))
-    for limit in result.get("limitations", []):
-        add(f"<i>Nota operativa: {limit}</i>", "TableText")
-
+    # 3. Three distinct rules, with representative evidence rather than every log row.
     story.append(PageBreak())
-    add("Anexo A. Evidencia original citada", "Heading1")
-    cited = {ref for finding in result.get("findings", []) for ref in finding["evidence"]}
-    for event in result.get("events", []):
-        if event["ref"] not in cited:
-            continue
-        add(f"{event['ref']} · Hoja: {event['sheet']} · Fila: {event['row']}", "Heading3")
-        for key, value in event["raw"].items():
-            add(f"{key}: {value}")
-    if not cited:
-        add("No hay filas citadas por los hallazgos actuales.")
+    add('4. Detalle técnico priorizado', 'Heading1')
+    selected, rules = [], set()
+    for f in findings:
+        if f['rule'] not in rules:
+            selected.append(f)
+            rules.add(f['rule'])
+        if len(selected) == 3:
+            break
+    add('Selección de hasta tres reglas distintas de mayor prioridad. Se resume la observación, su interpretación y la validación propuesta.', 'Small')
+    for f in selected:
+        block = [p(f"{f['id']} - {f['severity']} - {short(f['title'], 100)}", 'Heading2')]
+        block.append(p(f"Equipos: {short(', '.join(f['hosts']), 90)}. Ventana: {f['start']} - {f['end']}. Regla: {f['rule']}.", 'Small'))
+        for label, key in [('Observación', 'observation'), ('Justificación', 'rationale'), ('Impacto potencial', 'impact'), ('Alternativa legítima', 'alternative'), ('Validar', 'validation')]:
+            block.append(p(f"{label}: {short(f.get(key, 'No documentado'), 260)}"))
+        block.append(p(f"Evidencia: {', '.join(f['evidence'][:4])}" + (f"; {len(f['evidence'])} filas en total." if len(f['evidence']) > 4 else '.'), 'Small'))
+        story.append(KeepTogether(block))
+    if not selected:
+        add('No hay hallazgos que priorizar. La ausencia de coincidencias no acredita ausencia de actividad no autorizada.')
 
-    # ------------------ PIE DE PÁGINA ------------------
+    # 4. Supporting technical summary without a bulk appendix.
+    story.append(PageBreak())
+    add('5. Línea de tiempo consolidada', 'Heading1')
+    timeline = result.get('timeline', [])
+    table([['Hora original', 'Eventos únicos', 'Con señal']] + [[t['hour'], t['events'], t['flagged']] for t in timeline[:8]], [98, 40, 40])
+    if len(timeline) > 8:
+        add(f"Se muestran 8 de {len(timeline)} intervalos. Cronología completa en JSON.", 'Small')
+    add('6. Indicadores y observables', 'Heading1')
+    observables = sorted(result.get('observables', []), key=lambda o: -o['count'])
+    add('; '.join(f"{o['value']} ({o['kind']}, {o['count']} registros)" for o in observables[:8]) or 'No se extrajeron observables.')
+    add('Su presencia no demuestra actividad maliciosa. Los rangos de documentación son compatibles con el contexto de un reto.', 'Small')
+    add('7. Plan de acción recomendado', 'Heading1')
+    table([
+        ['Investigar', 'Contener si se confirma', 'Remediar y verificar'],
+        ['Preservar logs y tiempos; validar sesiones, MFA, propietarios y cambios autorizados.',
+         'Acordar el impacto con L2/IR; limitar accesos y revocar sesiones sólo tras confirmar actividad no autorizada.',
+         'Corregir la causa; revisar privilegios, MFA, segmentación y respaldos; comprobar recuperación y recurrencia.'],
+    ], [59, 59, 60])
+    add('Anexo A. Referencias de evidencia representativa', 'Heading2')
+    for f in selected:
+        event = event_map.get(f['evidence'][0]) if f['evidence'] else None
+        if event:
+            detail = event.get('command') or next((v for k, v in event['raw'].items() if 'command' in k.lower() and v), '') or event.get('description', '')
+            add(f"{event['ref']} | {event.get('log_id', '')} | {event.get('timestamp', '')} | {event.get('host', '')} | Evento {event.get('event_id', '')}. {short(detail, 230)}", 'Small')
+    add('Este PDF es un resumen: textos largos, observables y evidencias se condensan. Descarga el JSON para conservar todas las filas, referencias y hallazgos originales.', 'Small')
+
     def footer(canvas, doc):
         canvas.saveState()
+        canvas.setStrokeColor(colors.HexColor('#D8DFE8'))
+        canvas.line(16 * mm, 15 * mm, 194 * mm, 15 * mm)
         canvas.setFont(FONT, 8)
-        canvas.setFillColor(colors.HexColor("#65748b"))
-        canvas.drawString(20*mm, 15*mm, "Analista SOC N2 (Motor de Análisis Automático)")
-        canvas.drawCentredString(105*mm, 15*mm, "CONFIDENCIAL")
-        canvas.drawRightString(190*mm, 15*mm, f"Página {doc.page}")
+        canvas.setFillColor(COLOR_HEADER_BG)
+        canvas.drawString(16 * mm, 10 * mm, short(context.get('reference') or 'SOC Lens - Resumen técnico', 65))
+        canvas.drawRightString(194 * mm, 10 * mm, f'CONFIDENCIAL | Página {doc.page}')
         canvas.restoreState()
 
-    doc = SimpleDocTemplate(output, pagesize=A4, rightMargin=20*mm, leftMargin=20*mm,
-                            topMargin=20*mm, bottomMargin=25*mm,
-                            title="Informe Técnico SOC L2", author="SOC L2")
+    doc = SimpleDocTemplate(output, pagesize=A4, rightMargin=16 * mm, leftMargin=16 * mm,
+                            topMargin=14 * mm, bottomMargin=21 * mm,
+                            title='Resumen técnico SOC L2', author=context.get('analyst') or 'SOC L2')
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return output.getvalue()

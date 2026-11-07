@@ -12,7 +12,7 @@ async function engine() {
     await py.runPythonAsync("import micropip\nawait micropip.install(['openpyxl==3.1.5', 'defusedxml==0.7.1', 'reportlab==4.4.9'])");
     py.FS.mkdirTree('/soc/app');
     for (const name of ['__init__','analysis','ingest','report','selection']) {
-      const response = await fetch(`./python/${name}.py`);
+      const response = await fetch(`./python/${name}.py?v=d17aeba0445b`);
       if (!response.ok) throw new Error('No se pudo descargar el motor de análisis. Revisa tu conexión y vuelve a cargar la página.');
       py.FS.writeFile(`/soc/app/${name}.py`, await response.text());
     }

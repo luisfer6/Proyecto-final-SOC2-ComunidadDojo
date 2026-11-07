@@ -188,7 +188,7 @@ async function download(kind,button) {
     const url=URL.createObjectURL(await response.blob()), link=document.createElement("a");
     link.href=url;link.download=`SOC-Lens-${kind==="pdf"?"informe.pdf":"evidencias.json"}`;link.click();
     setTimeout(()=>URL.revokeObjectURL(url),10000);
-    notice(kind==="pdf"?"PDF generado con todos los hallazgos y su evidencia exacta.":"JSON generado con todas las filas originales y el análisis.");
+    notice(kind==="pdf"?"Resumen técnico PDF generado. El JSON conserva todas las evidencias y referencias.":"JSON generado con todas las filas originales y el análisis.");
   } catch(error) {notice(error.message,true);}
   finally {button.disabled=false;button.textContent=label;}
 }

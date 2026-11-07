@@ -18,9 +18,10 @@ async function loadDefaultCase() {
   finally { state.busy = false; button.disabled = false; $("#file-input").disabled = false; }
 }
 $("#restore-default").addEventListener('click', loadDefaultCase);
+$("#choose-excel").addEventListener('click', () => $("#file-input").click());
 const sourceObserver = new MutationObserver(() => {
   const included = state.data?.id === 'bundled-case';
-  $("#dataset-status").textContent = included ? 'EXCEL DEL PROYECTO' : 'EXCEL PERSONALIZADO';
+  $("#dataset-status").textContent = included ? 'EXCEL DEL RETO' : 'EXCEL PERSONALIZADO';
   $("#dataset-status").classList.toggle('custom-dataset', !included);
 });
 sourceObserver.observe($("#case-filename"), {childList:true});
@@ -32,4 +33,4 @@ for (const key of ['analyst','client','company','reference']) {
   });
   input.dispatchEvent(new Event('input'));
 }
-loadDefaultCase();
+// The challenge is loaded only when the visitor selects it.

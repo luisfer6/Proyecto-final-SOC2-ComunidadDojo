@@ -13,11 +13,14 @@ como hipótesis con claves, ventana y limitaciones explícitas.
 
 **[Abrir SOC Lens](https://luisfer6.github.io/Proyecto-final-SOC2-ComunidadDojo/)**
 
-La web carga `SOC_L2_Logs_Ampliados_Multiples_Incidentes.xlsx`, incluido en el repositorio. Usa **Cambiar Excel** para investigar
-otro archivo y **Restaurar Excel del proyecto** para volver al caso inicial. Puedes editar
-analista, cliente, consultora y referencia y descargar el informe PDF y el JSON.
+Pulsa **Usar Excel del reto** para cargar
+`SOC_L2_Logs_Ampliados_Multiples_Incidentes.xlsx`, incluido en el repositorio.
+También puedes arrastrar un Excel propio o hacer clic en la zona de carga. Puedes editar
+analista, cliente, consultora y referencia y descargar un resumen técnico PDF de 4 páginas para el reto, además del JSON
+con toda la evidencia. El resumen contiene alcance, catálogo de hallazgos, tres
+prioridades técnicas, cronología, observables y plan de acción.
 Los archivos elegidos se procesan en la memoria de tu navegador; no se suben a
-GitHub. Al recargar se vuelve al Excel del proyecto. No necesitas instalar Python ni iniciar
+GitHub. Al recargar puedes elegir de nuevo el Excel del reto o uno propio. No necesitas instalar Python ni iniciar
 un servidor. El motor de análisis se descarga desde CDN cuando se necesita;
 la primera carga de otro Excel o del PDF requiere conexión y puede tardar.
 Ollama es opcional y utiliza la instalación de cada visitante.
